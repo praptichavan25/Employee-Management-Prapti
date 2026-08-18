@@ -1,0 +1,98 @@
+{
+  "company": "PHOENIX",
+  "project_managers": [
+    {
+      "name": "Prapti Chavan",
+      "email": "prapti.chavan25@gmail.com",
+      "role": "project_manager",
+      "department": "Project Management",
+      "status": "active"
+    },
+    {
+      "name": "Ananya Kulkarni",
+      "email": "ananyaspkulkarni@gmail.com",
+      "role": "project_manager",
+      "department": "Project Management",
+      "status": "active"
+    },
+    {
+      "name": "Samarth Padole",
+      "email": "samarthpadole@gmail.com",
+      "role": "project_manager",
+      "department": "Project Management",
+      "status": "active"
+    }
+  ],
+  "employees": [
+    {
+      "name": "Akshit",
+      "email": "etteakshit@gmail.com",
+      "role": "employee",
+      "department": "Engineering",
+      "status": "active"
+    },
+    {
+      "name": "Pawani Joshi",
+      "email": "pawanicjoshi@gmail.com",
+      "role": "employee",
+      "department": "Design",
+      "status": "active"
+    },
+    {
+      "name": "Anuj",
+      "email": "anujp2407@gmail.com",
+      "role": "employee",
+      "department": "Data & Analytics",
+      "status": "active"
+    },
+    {
+      "name": "John Brick",
+      "email": "johnbricknew@gmail.com",
+      "role": "employee",
+      "department": "Engineering",
+      "status": "active"
+    },
+    {
+      "name": "Arya Pawar",
+      "email": "aryapawar663@gmail.com",
+      "role": "employee",
+      "department": "Engineering",
+      "status": "active"
+    },
+    {
+      "name": "Sanskar Ghorpade",
+      "email": "sanskarghorpade1@gmail.com",
+      "role": "employee",
+      "department": "Quality Assurance",
+      "status": "active"
+    },
+    {
+      "name": "Beast Loyal",
+      "email": "beastloyal87@gmail.com",
+      "role": "employee",
+      "department": "Infrastructure",
+      "status": "active"
+    },
+    {
+      "name": "Sanjana Chavan",
+      "email": "sanjanachavan2809@gmail.com",
+      "role": "employee",
+      "department": "Research & Development",
+      "status": "active"
+    },
+    {
+      "name": "Yash R More",
+      "email": "yashrmore24@gmail.com",
+      "role": "employee",
+      "department": "Operations",
+      "status": "active"
+    },
+    {
+      "name": "Tanmay",
+      "email": "69tanmaychavan@gmail.com",
+      "role": "employee",
+      "department": "Ai/Ml",
+      "status": "active"
+    }
+  ]
+}

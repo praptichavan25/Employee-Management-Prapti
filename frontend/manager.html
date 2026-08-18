@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PHOENIX - Project Manager</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <div class="manager-container">
+        <div class="manager-header">
+            <div class="manager-logo">PHOENIX</div>
+            <h1 class="manager-title">Project Manager</h1>
+        </div>
+
+        <div class="manager-card">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f0f0f0; padding-bottom: 12px; margin-bottom: 25px;">
+                <h2 class="manager-card-title" style="margin-bottom: 0; border-bottom: none; padding-bottom: 0; text-align: left;">Assign New Task</h2>
+                <button type="button" id="openAddEmployeeBtn" style="background: none; border: 1px solid #1a6f7d; color: #1a6f7d; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer;">+ Add Employee</button>
+            </div>
+
+            <form id="taskForm">
+                <div class="manager-form-group">
+                    <label for="employee">Employee</label>
+                    <select id="employee" name="employee" required>
+                        <option value="">Loading employees...</option>
+                    </select>
+                </div>
+
+                <div class="manager-form-group">
+                    <label for="task">Task</label>
+                    <input type="text" id="task" name="task" placeholder="Enter task description" required>
+                </div>
+
+                <div class="manager-form-group">
+                    <label for="deadline">Deadline</label>
+                    <input type="date" id="deadline" name="deadline" required>
+                </div>
+
+                <button type="submit" class="manager-btn">ASSIGN TASK</button>
+            </form>
+
+            <div class="manager-status">
+                <p id="statusText">● Ready</p>
+            </div>
+
+            <div id="feedbackMessage" class="manager-feedback"></div>
+        </div>
+
+        <!-- Add Employee Modal -->
+        <div id="addEmployeeModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+            <div class="manager-card" style="width: 90%; max-width: 440px; margin-bottom: 0;">
+                <h2 class="manager-card-title">Add New Employee</h2>
+                <form id="addEmployeeForm">
+                    <div class="manager-form-group">
+                        <label for="empName">Name</label>
+                        <input type="text" id="empName" placeholder="e.g. Rahul Sharma" required>
+                    </div>
+                    <div class="manager-form-group">
+                        <label for="empEmail">Gmail</label>
+                        <input type="email" id="empEmail" placeholder="e.g. rahulsharma@gmail.com" required>
+                    </div>
+                    <div class="manager-form-group">
+                        <label for="empDept">Department</label>
+                        <input type="text" id="empDept" placeholder="e.g. Engineering" required>
+                    </div>
+                    <div id="addEmpFeedback" class="manager-feedback" style="margin-bottom: 15px;"></div>
+                    <div style="display: flex; gap: 10px;">
+                        <button type="submit" class="manager-btn" style="margin-top: 0;">Add Employee</button>
+                        <button type="button" id="cancelAddEmployeeBtn" style="padding: 12px; background-color: #666; color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; text-transform: uppercase;">Cancel</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="manager-footer">
+            <button onclick="window.location.href='index.html'" class="manager-btn-logout">LOGOUT</button>
+        </div>
+    </div>
+
+    <script src="js/manager.js"></script>
+</body>
+</html>

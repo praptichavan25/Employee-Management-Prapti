@@ -1,0 +1,452 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    background-color: #f8f9fa;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.container {
+    width: 100%;
+    max-width: 400px;
+    padding: 20px;
+}
+
+.login-box {
+    background: white;
+    padding: 50px 40px;
+    border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+}
+
+.logo {
+    font-size: 32px;
+    font-weight: 700;
+    color: #1a6f7d;
+    text-align: center;
+    margin-bottom: 8px;
+    letter-spacing: -0.5px;
+}
+
+.subtitle {
+    font-size: 13px;
+    color: #666;
+    text-align: center;
+    margin-bottom: 40px;
+    font-weight: 500;
+    letter-spacing: 0.3px;
+}
+
+.form-group {
+    margin-bottom: 24px;
+}
+
+label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+input[type="email"],
+input[type="password"] {
+    width: 100%;
+    padding: 12px 14px;
+    border: 1px solid #d0d0d0;
+    border-radius: 8px;
+    font-size: 14px;
+    font-family: inherit;
+    transition: all 0.2s ease;
+}
+
+input[type="email"]:focus,
+input[type="password"]:focus {
+    outline: none;
+    border-color: #1a6f7d;
+    box-shadow: 0 0 0 3px rgba(26, 111, 125, 0.1);
+}
+
+.btn {
+    width: 100%;
+    padding: 12px;
+    background-color: #1a6f7d;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-transform: uppercase;
+}
+
+.btn:hover {
+    background-color: #155663;
+}
+
+.btn:active {
+    transform: scale(0.98);
+}
+
+.error-message {
+    margin-top: 20px;
+    padding: 12px;
+    border-radius: 6px;
+    font-size: 13px;
+    text-align: center;
+    color: #c41e3a;
+    background-color: #fde8eb;
+    display: none;
+}
+
+.error-message.show {
+    display: block;
+}
+
+.accent {
+    color: #d4af37;
+}
+
+/* ========== Manager Page Styles ========== */
+
+.manager-container {
+    width: 100%;
+    max-width: 500px;
+    padding: 20px;
+    margin: 0 auto;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.manager-header {
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+.manager-logo {
+    font-size: 28px;
+    font-weight: 700;
+    color: #1a6f7d;
+    letter-spacing: -0.5px;
+    margin-bottom: 12px;
+}
+
+.manager-title {
+    font-size: 20px;
+    font-weight: 600;
+    color: #333;
+    letter-spacing: 0.3px;
+}
+
+.manager-card {
+    background: white;
+    padding: 40px;
+    border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+    margin-bottom: 30px;
+}
+
+.manager-card-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #1a6f7d;
+    margin-bottom: 25px;
+    text-align: center;
+    border-bottom: 2px solid #f0f0f0;
+    padding-bottom: 12px;
+}
+
+.manager-form-group {
+    margin-bottom: 20px;
+}
+
+.manager-form-group label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.manager-form-group input,
+.manager-form-group select {
+    width: 100%;
+    padding: 12px 14px;
+    border: 1px solid #d0d0d0;
+    border-radius: 8px;
+    font-size: 14px;
+    font-family: inherit;
+    transition: all 0.2s ease;
+}
+
+.manager-form-group input:focus,
+.manager-form-group select:focus {
+    outline: none;
+    border-color: #1a6f7d;
+    box-shadow: 0 0 0 3px rgba(26, 111, 125, 0.1);
+}
+
+.manager-form-group select {
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231a6f7d' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    background-size: 20px;
+    padding-right: 35px;
+}
+
+.manager-btn {
+    width: 100%;
+    padding: 12px;
+    background-color: #1a6f7d;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-transform: uppercase;
+    margin-top: 10px;
+}
+
+.manager-btn:hover {
+    background-color: #155663;
+}
+
+.manager-btn:active {
+    transform: scale(0.98);
+}
+
+.manager-status {
+    margin-top: 20px;
+    padding: 12px;
+    background-color: #f0f9fa;
+    border-radius: 6px;
+    text-align: center;
+}
+
+.manager-status p {
+    font-size: 13px;
+    color: #1a6f7d;
+    margin: 0;
+    font-weight: 600;
+}
+
+.manager-feedback {
+    margin-top: 16px;
+    padding: 12px;
+    border-radius: 6px;
+    font-size: 13px;
+    text-align: center;
+    display: none;
+}
+
+.manager-feedback.error {
+    color: #c41e3a;
+    background-color: #fde8eb;
+    display: block;
+}
+
+.manager-feedback.success {
+    color: #28a745;
+    background-color: #e8f5e9;
+    display: block;
+}
+
+.manager-footer {
+    text-align: center;
+}
+
+.manager-btn-logout {
+    padding: 10px 24px;
+    background-color: #666;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-transform: uppercase;
+}
+
+.manager-btn-logout:hover {
+    background-color: #555;
+}
+
+.manager-btn-logout:active {
+    transform: scale(0.98);
+}
+
+/* ========== Employee Page Styles ========== */
+
+.employee-container {
+    width: 100%;
+    max-width: 500px;
+    padding: 20px;
+    margin: 0 auto;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.employee-header {
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+.employee-logo {
+    font-size: 28px;
+    font-weight: 700;
+    color: #1a6f7d;
+    letter-spacing: -0.5px;
+    margin-bottom: 12px;
+}
+
+.employee-title {
+    font-size: 20px;
+    font-weight: 600;
+    color: #333;
+    letter-spacing: 0.3px;
+    margin-bottom: 16px;
+}
+
+.employee-greeting {
+    font-size: 15px;
+    font-weight: 500;
+    color: #1a6f7d;
+    letter-spacing: 0.2px;
+}
+
+.employee-card {
+    background: white;
+    padding: 40px;
+    border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+    margin-bottom: 30px;
+}
+
+.employee-card-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #1a6f7d;
+    margin-bottom: 25px;
+    text-align: center;
+    border-bottom: 2px solid #f0f0f0;
+    padding-bottom: 12px;
+}
+
+.employee-task-info {
+    margin-bottom: 25px;
+}
+
+.employee-task-item {
+    margin-bottom: 18px;
+}
+
+.employee-task-item:last-child {
+    margin-bottom: 0;
+}
+
+.employee-label {
+    display: block;
+    font-size: 12px;
+    font-weight: 700;
+    color: #333;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 6px;
+}
+
+.employee-value {
+    font-size: 14px;
+    color: #555;
+    margin: 0;
+    line-height: 1.5;
+}
+
+.employee-status {
+    color: #1a6f7d;
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.employee-status.completed {
+    color: #28a745;
+}
+
+.employee-btn {
+    width: 100%;
+    padding: 12px;
+    background-color: #1a6f7d;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-transform: uppercase;
+}
+
+.employee-btn:hover:not(:disabled) {
+    background-color: #155663;
+}
+
+.employee-btn:active:not(:disabled) {
+    transform: scale(0.98);
+}
+
+.employee-btn:disabled {
+    background-color: #28a745;
+    cursor: not-allowed;
+    opacity: 0.9;
+}
+
+.employee-footer {
+    text-align: center;
+}
+
+.employee-btn-logout {
+    padding: 10px 24px;
+    background-color: #666;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-transform: uppercase;
+}
+
+.employee-btn-logout:hover {
+    background-color: #555;
+}
+
+.employee-btn-logout:active {
+    transform: scale(0.98);
+}
+
