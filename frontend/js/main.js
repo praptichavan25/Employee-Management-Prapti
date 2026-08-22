@@ -3,19 +3,22 @@ document.getElementById('loginForm').addEventListener('submit', async function(e
 
     const email = document.getElementById('email').value.trim();
     const errorMessage = document.getElementById('errorMessage');
-    const submitBtn = document.querySelector('.btn');
+    const submitBtn = document.querySelector('.btn-sign-in') || document.querySelector('.btn');
 
     // Clear previous error message
     errorMessage.textContent = '';
     errorMessage.classList.remove('show');
 
     if (!email) {
-        errorMessage.textContent = 'Please enter your email address.';
+        errorMessage.textContent = 'Please enter your work email.';
         errorMessage.classList.add('show');
         return;
     }
 
-    if (submitBtn) submitBtn.disabled = true;
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Signing in...';
+    }
 
     try {
         const response = await fetch('http://127.0.0.1:5001/login', {
@@ -33,7 +36,8 @@ document.getElementById('loginForm').addEventListener('submit', async function(e
             localStorage.setItem('phoenix_user', JSON.stringify({
                 name: data.user.name,
                 email: data.user.email,
-                role: data.user.role
+                role: data.user.role,
+                department: data.user.department || 'Engineering'
             }));
 
             // Redirect based on role
@@ -53,6 +57,9 @@ document.getElementById('loginForm').addEventListener('submit', async function(e
         errorMessage.textContent = 'Unable to connect to the PHOENIX server. Please make sure the backend is running.';
         errorMessage.classList.add('show');
     } finally {
-        if (submitBtn) submitBtn.disabled = false;
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Sign In';
+        }
     }
 });

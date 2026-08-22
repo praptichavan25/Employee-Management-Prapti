@@ -3,6 +3,7 @@ from flask_cors import CORS
 import json
 import os
 import sqlite3
+from datetime import datetime
 from email_service import send_task_email
 
 app = Flask(__name__)
@@ -207,13 +208,42 @@ def assign_task():
     data = request.get_json() or {}
     employee_name = data.get('employee_name', '').strip()
     task = data.get('task', '').strip()
-    deadline = data.get('deadline', '').strip()
+    deadline_date_str = data.get('deadline_date', '').strip()
+    deadline_time_str = data.get('deadline_time', '').strip()
     assigned_by_input = data.get('assigned_by', '').strip()
 
-    if not employee_name or not task or not deadline:
+    # Fallback to older `deadline` if the frontend hasn't been fully updated yet or API is used directly
+    legacy_deadline = data.get('deadline', '').strip()
+
+    if not employee_name or not task:
         return jsonify({
             'success': False,
-            'message': 'Missing required fields: employee_name, task, and deadline are required.'
+            'message': 'Missing required fields: employee_name and task are required.'
+        }), 400
+
+    # Combine deadline date and time
+    combined_deadline_iso = ""
+    email_deadline_str = ""
+
+    if deadline_date_str and deadline_time_str:
+        try:
+            # Create exact datetime object
+            dt = datetime.strptime(f"{deadline_date_str} {deadline_time_str}", "%Y-%m-%d %H:%M")
+            combined_deadline_iso = dt.strftime("%Y-%m-%d %H:%M:00")
+            # 20 August 2026 at 5:30 PM IST
+            email_deadline_str = dt.strftime("%d %B %Y at %I:%M %p IST")
+        except ValueError:
+            return jsonify({
+                'success': False,
+                'message': 'Invalid deadline date or time format.'
+            }), 400
+    elif legacy_deadline:
+        combined_deadline_iso = legacy_deadline
+        email_deadline_str = legacy_deadline
+    else:
+        return jsonify({
+            'success': False,
+            'message': 'Missing required fields: deadline date and time are required.'
         }), 400
 
     # 1. Validate assigned_by manager against employees.json
@@ -238,7 +268,7 @@ def assign_task():
         cursor = conn.cursor()
         cursor.execute(
             'INSERT INTO tasks (employee_name, task, deadline, status, assigned_by) VALUES (?, ?, ?, ?, ?)',
-            (employee_name, task, deadline, 'Assigned', manager_name)
+            (employee_name, task, combined_deadline_iso, 'Assigned', manager_name)
         )
         conn.commit()
         task_id = cursor.lastrowid
@@ -250,7 +280,7 @@ def assign_task():
         }), 500
 
     # 4. Send email using existing email service with manager name
-    email_sent = send_task_email(employee_name, employee_email, task, deadline, assigned_by=manager_name)
+    email_sent = send_task_email(employee_name, employee_email, task, email_deadline_str, assigned_by=manager_name)
 
     # 5. Return success only when task stored and email sent
     if email_sent:
@@ -304,5 +334,86 @@ def get_employee_tasks(employee_name):
         }), 500
 
 
+@app.route('/tasks/<int:task_id>/status', methods=['PATCH'])
+def update_task_status(task_id):
+    data = request.get_json() or {}
+    new_status = data.get('status', '').strip()
+    employee_name = data.get('employee_name', '').strip()
+
+    # Allowed status values
+    allowed_statuses = ['Assigned', 'In Progress', 'Completed']
+    matched_status = next((s for s in allowed_statuses if s.lower() == new_status.lower()), None)
+
+    if not matched_status:
+        return jsonify({
+            'success': False,
+            'message': 'Invalid task status. Allowed values: Assigned, In Progress, Completed'
+        }), 400
+
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+
+        # Check if task exists
+        cursor.execute(
+            'SELECT id, employee_name, task, deadline, status, assigned_by FROM tasks WHERE id = ?',
+            (task_id,)
+        )
+        task_row = cursor.fetchone()
+
+        if not task_row:
+            conn.close()
+            return jsonify({
+                'success': False,
+                'message': 'Task not found'
+            }), 404
+
+        # Verify employee ownership if employee_name is provided in request context
+        if employee_name and task_row['employee_name'].strip().lower() != employee_name.lower():
+            conn.close()
+            return jsonify({
+                'success': False,
+                'message': 'Unauthorized: Task belongs to another employee.'
+            }), 403
+
+        # Update status
+        cursor.execute(
+            'UPDATE tasks SET status = ? WHERE id = ?',
+            (matched_status, task_id)
+        )
+        conn.commit()
+
+        # Fetch updated task
+        cursor.execute(
+            'SELECT id, employee_name, task, deadline, status, assigned_by FROM tasks WHERE id = ?',
+            (task_id,)
+        )
+        updated_row = cursor.fetchone()
+        conn.close()
+
+        updated_task = {
+            'id': updated_row['id'],
+            'employee_name': updated_row['employee_name'],
+            'task': updated_row['task'],
+            'deadline': updated_row['deadline'],
+            'status': updated_row['status'],
+            'assigned_by': updated_row['assigned_by'] if 'assigned_by' in updated_row.keys() and updated_row['assigned_by'] else 'Prapti Chavan'
+        }
+
+        return jsonify({
+            'success': True,
+            'message': 'Task status updated successfully',
+            'task': updated_task
+        }), 200
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Error updating task status: {str(e)}'
+        }), 500
+
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5001, debug=True)
+

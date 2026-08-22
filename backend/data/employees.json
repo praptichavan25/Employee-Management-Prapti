@@ -93,6 +93,20 @@
       "role": "employee",
       "department": "Ai/Ml",
       "status": "active"
+    },
+    {
+      "name": "Anjishnu",
+      "email": "anjishnu.ghosh.804979@gmail.com",
+      "role": "employee",
+      "department": "R&D",
+      "status": "active"
+    },
+    {
+      "name": "mandar",
+      "email": "dnet.mandar@gmail.com",
+      "role": "employee",
+      "department": "R&D",
+      "status": "active"
     }
   ]
 }

@@ -3,26 +3,331 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PHOENIX - Employee</title>
-    <link rel="stylesheet" href="css/styles.css">
+    <title>PHOENIX Employee Workspace</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap" rel="stylesheet">
+    <!-- Google Material Symbols Outlined -->
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css?v=6.0">
 </head>
-<body>
-    <div class="employee-container">
-        <div class="employee-header">
-            <div class="employee-logo">PHOENIX</div>
-            <h1 class="employee-title">Employee Dashboard</h1>
-            <p id="employeeGreeting" class="employee-greeting">Hello, Sanjana Chavan</p>
+<body class="phoenix-emp-body">
+
+    <!-- 1. PHOENIX BRANDING HEADER -->
+    <header class="px-branding-header">
+        <div class="px-branding-inner">
+            <h1 class="px-brand-logo-head">PHOENIX</h1>
+            <span class="px-brand-badge">Employee Workspace</span>
+        </div>
+    </header>
+
+    <!-- MAIN CENTERED CONTENT CONTAINER -->
+    <main class="px-main-container">
+        
+        <!-- 2. WORKSPACE HEADING & SUBTITLE -->
+        <div class="px-workspace-title-section">
+            <h2 class="px-workspace-h2" id="empWelcomeHeading">Sanjana Chavan's Workspace</h2>
+            <p class="px-workspace-sub" id="employeeGreeting">Personal workspace &amp; professional profile for Sanjana Chavan</p>
         </div>
 
-        <div id="tasksContainer">
-            <!-- Dynamic tasks rendered here -->
+        <!-- 3. EMPLOYEE PROFILE / DETAILS CARD -->
+        <section class="px-card px-hero-card">
+            <!-- Left: Avatar & Meta -->
+            <div class="px-hero-left">
+                <div class="px-avatar-container">
+                    <div class="px-avatar-circle" id="empAvatarCircle">
+                        <span id="empAvatarLetter">S</span>
+                    </div>
+                    <div class="px-active-pill">
+                        <span class="px-green-dot"></span>
+                        <span id="empStatusBadge">Active</span>
+                    </div>
+                </div>
+
+                <h3 class="px-profile-name" id="empNameDisplay">Sanjana Chavan</h3>
+                <p class="px-profile-title" id="empRoleDisplay">R&amp;D Specialist</p>
+
+                <div class="px-meta-list">
+                    <div class="px-meta-row">
+                        <div class="px-meta-ico-wrap">
+                            <span class="material-symbols-outlined">business_center</span>
+                        </div>
+                        <div>
+                            <span class="px-meta-lbl">Department</span>
+                            <p class="px-meta-val" id="empDeptDisplay">Research &amp; Development</p>
+                        </div>
+                    </div>
+
+                    <div class="px-meta-row">
+                        <div class="px-meta-ico-wrap">
+                            <span class="material-symbols-outlined">supervisor_account</span>
+                        </div>
+                        <div>
+                            <span class="px-meta-lbl">Assigned By / Manager</span>
+                            <p class="px-meta-val" id="empManagerDisplay">Prapti Chavan</p>
+                        </div>
+                    </div>
+
+                    <div class="px-meta-row">
+                        <div class="px-meta-ico-wrap">
+                            <span class="material-symbols-outlined">mail</span>
+                        </div>
+                        <div>
+                            <span class="px-meta-lbl">Official Email</span>
+                            <p class="px-meta-val" id="empEmailDisplay">sanjanachavan2809@gmail.com</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right: About & Department Specializations -->
+            <div class="px-hero-right">
+                <div class="px-about-box">
+                    <h4 class="px-section-h4">
+                        <span class="material-symbols-outlined px-teal-icon">contact_page</span>
+                        About &amp; Specializations
+                    </h4>
+                    <p class="px-about-para" id="empAboutPara">
+                        Active professional contributing to high-impact projects, sprint deliverables, and platform automations across the PHOENIX organization.
+                    </p>
+                    <div class="px-pill-tags" id="empPillTags">
+                        <span class="px-tag tag-sky">Emerging Tech</span>
+                        <span class="px-tag tag-peach">Algorithmic Research</span>
+                        <span class="px-tag tag-lilac">Prototyping</span>
+                        <span class="px-tag tag-mint">Feasibility</span>
+                    </div>
+                </div>
+
+                <div class="px-skills-sec">
+                    <h4 class="px-section-h4 px-skills-title">Role Expertise &amp; Focus</h4>
+                    <div class="px-skills-grid" id="empSkillsGrid">
+                        <!-- Populated dynamically based on department -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 4. DAILY WORKSPACE BAR -->
+        <div class="px-daily-workspace-header">
+            <h2 class="px-daily-title">Daily Workspace</h2>
+            <div class="px-daily-date">
+                <span class="material-symbols-outlined">calendar_today</span>
+                <span id="currentDateDisplay">Today</span>
+            </div>
         </div>
 
-        <div class="employee-footer">
-            <button onclick="window.location.href='index.html'" class="employee-btn-logout">LOGOUT</button>
-        </div>
-    </div>
+        <!-- 5. STATISTICS CARDS (4 Categories: Active Tasks, Upcoming Deadlines, Past Due Tasks, Completed) -->
+        <section class="px-kpi-row">
+            <!-- 1. Active Tasks -->
+            <div class="px-kpi-card">
+                <div class="px-kpi-circle ico-mint">
+                    <span class="material-symbols-outlined">assignment</span>
+                </div>
+                <div class="px-kpi-text-wrap">
+                    <span class="px-kpi-label">ACTIVE TASKS</span>
+                    <p class="px-kpi-num" id="kpiActiveTasks">0</p>
+                </div>
+            </div>
 
-    <script src="js/employee.js"></script>
+            <!-- 2. Upcoming Deadlines -->
+            <div class="px-kpi-card kpi-blue-border">
+                <div class="px-kpi-circle ico-sky">
+                    <span class="material-symbols-outlined">schedule</span>
+                </div>
+                <div class="px-kpi-text-wrap">
+                    <span class="px-kpi-label">UPCOMING DEADLINES</span>
+                    <p class="px-kpi-num" id="kpiDeadlines">0</p>
+                </div>
+            </div>
+
+            <!-- 3. Past Due Tasks -->
+            <div class="px-kpi-card kpi-red-border">
+                <div class="px-kpi-circle ico-peach">
+                    <span class="material-symbols-outlined">warning</span>
+                </div>
+                <div class="px-kpi-text-wrap">
+                    <span class="px-kpi-label">PAST DUE TASKS</span>
+                    <p class="px-kpi-num" id="kpiPastDueTasks">0</p>
+                </div>
+            </div>
+
+            <!-- 4. Completed -->
+            <div class="px-kpi-card">
+                <div class="px-kpi-circle ico-lavender">
+                    <span class="material-symbols-outlined">task_alt</span>
+                </div>
+                <div class="px-kpi-text-wrap">
+                    <span class="px-kpi-label">COMPLETED</span>
+                    <p class="px-kpi-num" id="kpiCompletedTasks">0</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- 6. PAST DUE TASKS SECTION (Shows only overdue, uncompleted tasks for logged-in employee) -->
+        <section class="px-card px-past-due-section" id="pastDueCardSection">
+            <div class="px-card-head">
+                <div class="px-past-due-title-wrap">
+                    <span class="material-symbols-outlined px-warn-alert-icon">error</span>
+                    <div>
+                        <h3 class="px-card-title text-danger">Past Due Tasks</h3>
+                        <p class="px-card-sub">Assigned tasks where the deadline has passed and requires attention</p>
+                    </div>
+                </div>
+                <span class="px-count-badge badge-danger-count" id="pastDueCountBadge">0 Overdue</span>
+            </div>
+
+            <div id="pastDueTasksContainer" class="px-tasks-stack">
+                <!-- Populated dynamically via js/employee.js -->
+            </div>
+        </section>
+
+        <!-- 7. BALANCED TWO COLUMN WORKSPACE GRID (Assigned Tasks & Upcoming Deadlines) -->
+        <div class="px-two-col-layout">
+            
+            <!-- LEFT COLUMN: Assigned Tasks -->
+            <div class="px-col-left">
+                <div class="px-card px-tasks-card">
+                    <div class="px-card-head">
+                        <div>
+                            <h3 class="px-card-title">Assigned Tasks &amp; Active Deliverables</h3>
+                            <p class="px-card-sub">Live tasks fetched from PHOENIX server</p>
+                        </div>
+                        <span class="px-count-badge" id="taskCountBadge">0 Total</span>
+                    </div>
+
+                    <!-- Filter & Search Controls -->
+                    <div class="px-task-filter-section">
+                        <!-- Search Bar -->
+                        <div class="px-task-search-box">
+                            <span class="material-symbols-outlined px-task-search-icon">search</span>
+                            <input type="text" id="taskSearchInput" placeholder="Search tasks by title, manager, or status..." oninput="handleTaskSearch(event)">
+                            <button type="button" id="clearSearchBtn" class="px-btn-clear-search" onclick="clearTaskSearch()" style="display:none;" title="Clear search">
+                                <span class="material-symbols-outlined">close</span>
+                            </button>
+                        </div>
+
+                        <!-- Filter Tabs / Pills with Dynamic Counts -->
+                        <div class="px-filter-tabs" role="tablist">
+                            <button type="button" class="px-filter-tab active" data-filter="all" onclick="setTaskFilter('all')">
+                                <span>All Tasks</span>
+                                <span class="px-tab-count" id="countFilterAll">0</span>
+                            </button>
+                            <button type="button" class="px-filter-tab" data-filter="upcoming" onclick="setTaskFilter('upcoming')">
+                                <span>Upcoming</span>
+                                <span class="px-tab-count tab-count-upcoming" id="countFilterUpcoming">0</span>
+                            </button>
+                            <button type="button" class="px-filter-tab" data-filter="past_due" onclick="setTaskFilter('past_due')">
+                                <span>Past Due</span>
+                                <span class="px-tab-count tab-count-pastdue" id="countFilterPastDue">0</span>
+                            </button>
+                            <button type="button" class="px-filter-tab" data-filter="completed" onclick="setTaskFilter('completed')">
+                                <span>Completed</span>
+                                <span class="px-tab-count tab-count-completed" id="countFilterCompleted">0</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Dynamic tasks container connected to /tasks/<employee_name> -->
+                    <div id="tasksContainer" class="px-tasks-stack">
+                        <!-- Loaded dynamically via js/employee.js -->
+                    </div>
+                </div>
+
+                <!-- Custom Task Completion Confirmation Modal -->
+                <div id="completeConfirmModal" class="px-modal-backdrop" style="display:none;">
+                    <div class="px-confirm-dialog">
+                        <div class="px-confirm-icon-box">
+                            <span class="material-symbols-outlined">check_circle</span>
+                        </div>
+                        <h4 class="px-confirm-title">Mark Task as Completed?</h4>
+                        <p class="px-confirm-desc" id="confirmTaskTitle">Are you sure you want to mark this task as completed?</p>
+                        <div class="px-confirm-actions">
+                            <button type="button" class="px-btn-cancel-modal" onclick="cancelCompleteModal()">Cancel</button>
+                            <button type="button" class="px-btn-confirm-modal" onclick="executeCompleteModal()">Mark Completed</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Professional Journey / Team Trajectory -->
+                <div class="px-card px-timeline-card">
+                    <h3 class="px-card-title" style="margin-bottom: 20px;">Role Trajectory &amp; Team</h3>
+                    
+                    <div class="px-timeline">
+                        <div class="px-t-item">
+                            <div class="px-t-dot dot-teal"></div>
+                            <div class="px-t-badge">CURRENT ROLE</div>
+                            <h4 class="px-t-role" id="timelineCurrentRole">Specialist</h4>
+                            <p class="px-t-desc">Handling day-to-day assignments, automated notifications, and project milestones.</p>
+                        </div>
+
+                        <div class="px-t-item">
+                            <div class="px-t-dot dot-grey"></div>
+                            <div class="px-t-date">Organization</div>
+                            <h4 class="px-t-role">PHOENIX Systems</h4>
+                            <p class="px-t-desc">Member of active company workspace under verified Project Management.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- RIGHT COLUMN: Upcoming Deadlines & Join Meeting Card -->
+            <div class="px-col-right">
+                
+                <!-- Upcoming Deadlines (Future uncompleted tasks only) -->
+                <div class="px-card px-deadlines-card px-glass-card-container">
+                    <div class="px-card-head">
+                        <div>
+                            <h3 class="px-card-title">Upcoming Deadlines</h3>
+                            <p class="px-card-sub">Future deliverables &amp; milestone targets</p>
+                        </div>
+                        <span class="material-symbols-outlined ico-sky-icon">event_upcoming</span>
+                    </div>
+
+                    <!-- Real Deadlines Container (Live Future Tasks from SQLite) -->
+                    <div class="px-deadlines-container" id="realDeadlinesContainer">
+                        <!-- Populated by employee.js with actual future task deadlines -->
+                    </div>
+                </div>
+
+                <!-- Join Meeting Card -->
+                <div class="px-card px-meeting-widget-card">
+                    <div class="px-meeting-widget-inner">
+                        <div class="px-meeting-ico-box">
+                            <span class="material-symbols-outlined">videocam</span>
+                        </div>
+                        <div class="px-meeting-widget-info">
+                            <h4 class="px-meeting-widget-title">Join Meeting</h4>
+                            <p class="px-meeting-widget-sub">No upcoming team meeting scheduled</p>
+                        </div>
+                        <button type="button" class="px-btn-join-now" onclick="joinMeetingPrompt()">Join Now</button>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+
+        <!-- 8. BOTTOM LOGOUT SECTION -->
+        <footer class="px-bottom-logout-section">
+            <button type="button" onclick="logoutEmployee()" class="px-btn-bottom-logout">
+                <span class="material-symbols-outlined">logout</span>
+                <span>LOGOUT</span>
+            </button>
+        </footer>
+
+    </main>
+
+    <script>
+        function logoutEmployee() {
+            localStorage.removeItem('phoenix_user');
+            window.location.href = 'index.html';
+        }
+
+        function joinMeetingPrompt() {
+            alert('No meeting link available yet.');
+        }
+    </script>
+    <script src="js/employee.js?v=6.0"></script>
 </body>
 </html>

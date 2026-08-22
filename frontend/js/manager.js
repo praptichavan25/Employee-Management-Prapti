@@ -116,7 +116,8 @@ document.getElementById('taskForm').addEventListener('submit', async function (e
 
     const employee = document.getElementById('employee').value.trim();
     const task = document.getElementById('task').value.trim();
-    const deadline = document.getElementById('deadline').value;
+    const deadlineDate = document.getElementById('deadline_date').value;
+    const deadlineTime = document.getElementById('deadline_time').value;
     const feedbackMessage = document.getElementById('feedbackMessage');
     const statusText = document.getElementById('statusText');
     const submitBtn = document.querySelector('.manager-btn');
@@ -126,7 +127,7 @@ document.getElementById('taskForm').addEventListener('submit', async function (e
     feedbackMessage.className = 'manager-feedback';
 
     // Validate all fields
-    if (!employee || !task || !deadline) {
+    if (!employee || !task || !deadlineDate || !deadlineTime) {
         feedbackMessage.textContent = 'Please fill in all fields.';
         feedbackMessage.classList.add('error');
         statusText.textContent = '● Ready';
@@ -160,7 +161,8 @@ document.getElementById('taskForm').addEventListener('submit', async function (e
             body: JSON.stringify({
                 employee_name: employee,
                 task: task,
-                deadline: deadline,
+                deadline_date: deadlineDate,
+                deadline_time: deadlineTime,
                 assigned_by: managerName
             })
         });
