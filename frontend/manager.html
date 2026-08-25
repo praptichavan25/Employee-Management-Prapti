@@ -6,7 +6,8 @@
     <title>PHOENIX — Project Manager Dashboard</title>
     <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@600;700;800&display=swap" rel="stylesheet"/>
+    <link rel="stylesheet" href="css/styles.css">
     <script>
         tailwind.config = {
             theme: {
@@ -128,24 +129,12 @@
 <body class="min-h-screen">
 
 <!-- Top Header -->
-<header style="background: #18363A;" class="sticky top-0 z-40 px-8 py-0 flex items-center justify-between h-14 shadow-md">
-    <div class="flex items-center gap-3">
-        <svg width="26" height="26" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M24 4C24.8 9.5 28.5 14 34 16C29 18 26.5 21 26 26C28.5 23 32.5 22.5 36 24C31 27.5 28 32.5 27.5 39C25.5 34 22 30 17 28C21 26.5 23 23.5 23 19C19 21.5 14.5 21 11 18C16.5 15.5 21.5 11 24 4Z" fill="url(#hg1)"/>
-            <defs><linearGradient id="hg1" x1="6" y1="42" x2="42" y2="6" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#8ef4eb"/><stop offset="100%" stop-color="#b5cad4"/></linearGradient></defs>
-        </svg>
-        <span class="text-white font-bold tracking-widest text-base" style="letter-spacing: 0.18em;">PHOENIX</span>
-        <span class="text-white/30 font-light text-sm mx-1">/</span>
-        <span class="text-white/70 text-sm font-medium">Project Manager</span>
-    </div>
-    <div class="flex items-center gap-3">
-        <button class="text-white/60 hover:text-white transition-colors"><span class="material-symbols-outlined">notifications</span></button>
-        <button class="text-white/60 hover:text-white transition-colors"><span class="material-symbols-outlined">mail</span></button>
-        <div class="w-px h-5 bg-white/20 mx-1"></div>
-        <div class="flex items-center gap-2">
-            <div class="w-7 h-7 rounded-full bg-teal-light flex items-center justify-center text-teal font-semibold text-xs">PM</div>
-            <span class="text-white/80 text-sm font-medium hidden sm:block">Manager</span>
+<header class="px-branding-header">
+    <div class="px-branding-inner">
+        <div class="px-header-logo-group">
+            <img src="assets/phoenix_logo_gold.png" alt="PHOENIX" class="px-header-logo-img" />
         </div>
+        <span class="px-brand-badge" style="background-color: #E6F4F1; color: #006660; font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 9999px; letter-spacing: 0.3px;">Project Manager</span>
     </div>
 </header>
 

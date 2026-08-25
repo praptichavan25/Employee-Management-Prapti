@@ -771,6 +771,17 @@ body.phoenix-emp-body {
     margin: 0;
 }
 
+.px-header-logo-group {
+    display: flex;
+    align-items: center;
+}
+
+.px-header-logo-img {
+    height: 32px;
+    width: auto;
+    display: block;
+}
+
 .px-brand-badge {
     background-color: #E6F4F1;
     color: #006660;
