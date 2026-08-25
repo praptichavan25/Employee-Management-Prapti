@@ -235,6 +235,9 @@ async function loadTasks(employeeName) {
             renderPastDueTasks(allEmployeeTasks);
             renderUpcomingDeadlines(allEmployeeTasks);
             updateKPICounters(allEmployeeTasks);
+            
+            // Also load meetings for the employee
+            loadMeetings(employeeName);
         } else {
             if (tasksContainer) {
                 tasksContainer.innerHTML = `
@@ -253,6 +256,199 @@ async function loadTasks(employeeName) {
             `;
         }
     }
+}
+
+let currentMeetingInterval = null;
+
+async function loadMeetings(employeeName) {
+    try {
+        const response = await fetch(`http://127.0.0.1:5001/meetings/${encodeURIComponent(employeeName)}`);
+        const data = await response.json();
+        
+        if (response.ok && data.success) {
+            renderMeeting(data.meetings || []);
+        }
+    } catch (e) {
+        console.error("Failed to load meetings:", e);
+    }
+}
+
+function renderMeeting(meetings) {
+    if (currentMeetingInterval) {
+        clearInterval(currentMeetingInterval);
+        currentMeetingInterval = null;
+    }
+
+    const container = document.getElementById('meetingWidgetContainer');
+    const titleEl = document.getElementById('meetingTitle');
+    const subEl = document.getElementById('meetingSub');
+    const statusBadge = document.getElementById('meetingStatusBadge');
+    const detailsBox = document.getElementById('meetingDetailsBox');
+    const dateEl = document.getElementById('meetingDate');
+    const timeEl = document.getElementById('meetingTime');
+    const durEl = document.getElementById('meetingDuration');
+    const hostEl = document.getElementById('meetingHost');
+    const partEl = document.getElementById('meetingParticipants');
+    const descEl = document.getElementById('meetingDescription');
+    const addCalEl = document.getElementById('meetingAddToCalendar');
+    const joinBtn = document.getElementById('joinMeetingBtn');
+
+    if (!container) return; // not initialized yet or wrong page
+
+    // Filter to only upcoming or currently live meetings
+    const now = new Date();
+    const activeMeetings = meetings.filter(m => {
+        const end = new Date(m.end_time.replace(' ', 'T'));
+        return end > now;
+    });
+
+    if (activeMeetings.length === 0) {
+        // No Meeting
+        titleEl.textContent = 'Join Meeting';
+        subEl.textContent = 'No upcoming team meeting scheduled';
+        statusBadge.style.display = 'none';
+        detailsBox.style.display = 'none';
+        addCalEl.style.display = 'none';
+        
+        joinBtn.style.pointerEvents = 'none';
+        joinBtn.style.opacity = '0.5';
+        joinBtn.textContent = 'Join Now';
+        joinBtn.removeAttribute('href');
+        return;
+    }
+
+    // Sort by nearest start time
+    activeMeetings.sort((a, b) => new Date(a.start_time.replace(' ', 'T')) - new Date(b.start_time.replace(' ', 'T')));
+    const nearest = activeMeetings[0];
+
+    const start = new Date(nearest.start_time.replace(' ', 'T'));
+    const end = new Date(nearest.end_time.replace(' ', 'T'));
+
+    titleEl.textContent = nearest.title;
+    
+    // Set details
+    const dateOpts = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+    if (dateEl) dateEl.textContent = start.toLocaleDateString('en-US', dateOpts);
+    
+    timeEl.textContent = start.toLocaleTimeString('en-US', {hour: 'numeric', minute:'2-digit'}) + ' - ' + end.toLocaleTimeString('en-US', {hour: 'numeric', minute:'2-digit'});
+    
+    const diffMins = Math.round((end - start) / 60000);
+    durEl.textContent = diffMins >= 60 ? `${(diffMins/60).toFixed(1)} hrs` : `${diffMins} mins`;
+    
+    hostEl.textContent = nearest.host;
+    partEl.textContent = nearest.participants_count + (nearest.participants_count === 1 ? ' Participant' : ' Participants');
+    
+    if (nearest.description) {
+        descEl.textContent = nearest.description;
+        descEl.style.display = 'block';
+    } else {
+        descEl.style.display = 'none';
+    }
+    
+    detailsBox.style.display = 'flex';
+
+    // Setup Add to Calendar
+    addCalEl.href = generateICS(nearest);
+    addCalEl.style.display = 'inline-flex';
+
+    // Link
+    if (nearest.link) {
+        joinBtn.href = nearest.link;
+    } else {
+        joinBtn.removeAttribute('href');
+    }
+
+    // Countdown and Status Loop
+    const updateStatus = () => {
+        const curr = new Date();
+        
+        if (curr >= start && curr <= end) {
+            // Live
+            subEl.textContent = 'Meeting is currently in progress';
+            statusBadge.textContent = '🟢 LIVE NOW';
+            statusBadge.style.backgroundColor = '#d1fae5';
+            statusBadge.style.color = '#065f46';
+            statusBadge.style.display = 'inline-block';
+            
+            if (nearest.link) {
+                joinBtn.style.pointerEvents = 'auto';
+                joinBtn.style.opacity = '1';
+                // Highlight Join Now when active
+                joinBtn.style.backgroundColor = '#0d9488'; // Teal
+                joinBtn.style.color = '#ffffff';
+                joinBtn.style.boxShadow = '0 4px 12px rgba(13, 148, 136, 0.3)';
+                joinBtn.style.border = 'none';
+            }
+            joinBtn.textContent = 'Join Now';
+        } else if (curr < start) {
+            // Upcoming
+            statusBadge.style.display = 'none';
+            joinBtn.style.pointerEvents = 'none';
+            joinBtn.style.opacity = '0.5';
+            
+            // Reset button styles
+            joinBtn.style.backgroundColor = '';
+            joinBtn.style.color = '';
+            joinBtn.style.boxShadow = '';
+            joinBtn.style.border = '';
+            
+            const diff = start - curr;
+            const m = Math.floor(diff / 60000);
+            const h = Math.floor(m / 60);
+            const d = Math.floor(h / 24);
+            
+            if (d > 1) {
+                subEl.textContent = `Starts in ${d} days`;
+            } else if (d === 1) {
+                subEl.textContent = `Starts tomorrow`;
+            } else if (h > 0) {
+                subEl.textContent = `Starts in ${h} hour${h > 1 ? 's' : ''}`;
+            } else if (m > 15) {
+                subEl.textContent = `Starts in ${m} minutes`;
+            } else {
+                subEl.textContent = `Starting soon`;
+            }
+        } else {
+            // Ended
+            subEl.textContent = 'Meeting Ended';
+            statusBadge.style.display = 'none';
+            joinBtn.style.pointerEvents = 'none';
+            joinBtn.style.opacity = '0.5';
+            
+            // Reset button styles
+            joinBtn.style.backgroundColor = '';
+            joinBtn.style.color = '';
+            joinBtn.style.boxShadow = '';
+            joinBtn.style.border = '';
+            clearInterval(currentMeetingInterval);
+        }
+    };
+
+    updateStatus();
+    currentMeetingInterval = setInterval(updateStatus, 60000); // Check every minute
+}
+
+function generateICS(meeting) {
+    const start = new Date(meeting.start_time.replace(' ', 'T'));
+    const end = new Date(meeting.end_time.replace(' ', 'T'));
+    
+    // Format to YYYYMMDDTHHMMSSZ (UTC)
+    const fmt = (d) => d.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+    
+    const icsContent = [
+        "BEGIN:VCALENDAR",
+        "VERSION:2.0",
+        "BEGIN:VEVENT",
+        `DTSTART:${fmt(start)}`,
+        `DTEND:${fmt(end)}`,
+        `SUMMARY:${meeting.title}`,
+        `DESCRIPTION:${meeting.description || ''}`,
+        `LOCATION:${meeting.link || ''}`,
+        "END:VEVENT",
+        "END:VCALENDAR"
+    ].join("\n");
+    
+    return "data:text/calendar;charset=utf8," + encodeURIComponent(icsContent);
 }
 
 // Task Filtering & Search State

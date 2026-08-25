@@ -1,112 +1,378 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PHOENIX - Project Manager</title>
-    <!-- Google Fonts: Inter and Outfit -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/styles.css">
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>PHOENIX — Project Manager Dashboard</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    colors: {
+                        teal: { DEFAULT: '#1f5e5b', light: '#e6f2f1', mid: '#006762', dark: '#18363A' },
+                        amber: { soft: '#fff8e1', badge: '#ffdf9b', text: '#785a00' },
+                        rose: { soft: '#fff1f0', badge: '#ffdad6', text: '#ba1a1a' },
+                        mint: { soft: '#e8f8f2', text: '#006762' },
+                        muted: '#6b7c7b',
+                        border: '#dce8e6',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background: #f4f8f7; font-family: 'Inter', sans-serif; }
+
+        /* Card */
+        .card {
+            background: #ffffff;
+            border: 1px solid #e2eceb;
+            border-radius: 14px;
+            box-shadow: 0 1px 6px rgba(20,60,58,0.06);
+        }
+
+        /* Material icons */
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20;
+            font-size: 18px;
+            vertical-align: middle;
+        }
+
+        /* Form inputs */
+        .form-input {
+            width: 100%;
+            background: #f9fbfb;
+            border: 1px solid #dce8e6;
+            border-radius: 8px;
+            padding: 9px 12px;
+            font-size: 13.5px;
+            color: #1a2e2d;
+            outline: none;
+            transition: border-color 0.15s, box-shadow 0.15s;
+            appearance: none;
+        }
+        .form-input:focus {
+            border-color: #1f5e5b;
+            box-shadow: 0 0 0 3px rgba(31,94,91,0.08);
+        }
+        select.form-input { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='%236b7c7b'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px; }
+
+        /* KPI */
+        .kpi-num { font-size: 28px; font-weight: 700; line-height: 1; }
+
+        /* Progress bar */
+        .progress-bar { height: 5px; border-radius: 99px; background: #e2eceb; overflow: hidden; }
+        .progress-fill { height: 100%; border-radius: 99px; background: #1f5e5b; transition: width 0.6s ease; }
+
+        /* Badge */
+        .badge { display: inline-flex; align-items: center; padding: 2px 9px; border-radius: 99px; font-size: 11px; font-weight: 500; }
+
+        /* Primary button */
+        .btn-primary {
+            background: #1f5e5b;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 9px 20px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: background 0.15s, box-shadow 0.15s;
+        }
+        .btn-primary:hover { background: #006762; box-shadow: 0 3px 10px rgba(31,94,91,0.2); }
+        .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+
+        .btn-outline {
+            background: white;
+            color: #1f5e5b;
+            border: 1px solid #dce8e6;
+            border-radius: 8px;
+            padding: 8px 16px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: border-color 0.15s, background 0.15s;
+        }
+        .btn-outline:hover { border-color: #1f5e5b; background: #f4f8f7; }
+
+        /* Donut chart */
+        #donutChartGraphic { position: relative; }
+        .donut-center {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Feedback */
+        .feedback-success { background: #e8f8f2; color: #006762; border-radius: 8px; padding: 8px 12px; font-size: 13px; }
+        .feedback-error { background: #fff1f0; color: #ba1a1a; border-radius: 8px; padding: 8px 12px; font-size: 13px; }
+
+        /* Modal */
+        .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.3); backdrop-filter: blur(4px); z-index: 50; display: flex; align-items: center; justify-content: center; }
+    </style>
 </head>
-<body>
-    <div class="manager-container">
-        <div class="manager-header">
-            <div class="logo-wrapper" style="justify-content: center; margin-bottom: 8px;">
-                <div class="logo-icon-container" style="width: 38px; height: 38px; margin-bottom: 0;">
-                    <svg class="logo-icon-svg" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <defs>
-                            <linearGradient id="mgrPhoenixGrad" x1="6" y1="42" x2="42" y2="6" gradientUnits="userSpaceOnUse">
-                                <stop offset="0%" stop-color="#145663"/>
-                                <stop offset="45%" stop-color="#1a6f7d"/>
-                                <stop offset="80%" stop-color="#2ba3b5"/>
-                                <stop offset="100%" stop-color="#38c5d9"/>
-                            </linearGradient>
-                            <linearGradient id="mgrPhoenixWing" x1="12" y1="36" x2="36" y2="12" gradientUnits="userSpaceOnUse">
-                                <stop offset="0%" stop-color="#2ba3b5" stop-opacity="0.3"/>
-                                <stop offset="100%" stop-color="#ffffff" stop-opacity="0.9"/>
-                            </linearGradient>
-                        </defs>
-                        <path d="M24 4C24.8 9.5 28.5 14 34 16C29 18 26.5 21 26 26C28.5 23 32.5 22.5 36 24C31 27.5 28 32.5 27.5 39C25.5 34 22 30 17 28C21 26.5 23 23.5 23 19C19 21.5 14.5 21 11 18C16.5 15.5 21.5 11 24 4Z" fill="url(#mgrPhoenixGrad)"/>
-                        <path d="M24 8C24.5 12 27.5 15.5 31.5 17C27.5 18.5 25.5 21 25 25C27 22.5 30 22 33 23.5C29 26 26.5 30 26 35C24.5 31 22 28 18 26.5C21 25.5 22.5 23 22.5 19.5C19.5 21.5 16 21 13 18.5C17.5 16.5 21.5 13 24 8Z" fill="url(#mgrPhoenixWing)"/>
-                    </svg>
-                </div>
-                <div class="manager-logo">PHOENIX</div>
-            </div>
-            <h1 class="manager-title">Project Manager Dashboard</h1>
+
+<body class="min-h-screen">
+
+<!-- Top Header -->
+<header style="background: #18363A;" class="sticky top-0 z-40 px-8 py-0 flex items-center justify-between h-14 shadow-md">
+    <div class="flex items-center gap-3">
+        <svg width="26" height="26" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M24 4C24.8 9.5 28.5 14 34 16C29 18 26.5 21 26 26C28.5 23 32.5 22.5 36 24C31 27.5 28 32.5 27.5 39C25.5 34 22 30 17 28C21 26.5 23 23.5 23 19C19 21.5 14.5 21 11 18C16.5 15.5 21.5 11 24 4Z" fill="url(#hg1)"/>
+            <defs><linearGradient id="hg1" x1="6" y1="42" x2="42" y2="6" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#8ef4eb"/><stop offset="100%" stop-color="#b5cad4"/></linearGradient></defs>
+        </svg>
+        <span class="text-white font-bold tracking-widest text-base" style="letter-spacing: 0.18em;">PHOENIX</span>
+        <span class="text-white/30 font-light text-sm mx-1">/</span>
+        <span class="text-white/70 text-sm font-medium">Project Manager</span>
+    </div>
+    <div class="flex items-center gap-3">
+        <button class="text-white/60 hover:text-white transition-colors"><span class="material-symbols-outlined">notifications</span></button>
+        <button class="text-white/60 hover:text-white transition-colors"><span class="material-symbols-outlined">mail</span></button>
+        <div class="w-px h-5 bg-white/20 mx-1"></div>
+        <div class="flex items-center gap-2">
+            <div class="w-7 h-7 rounded-full bg-teal-light flex items-center justify-center text-teal font-semibold text-xs">PM</div>
+            <span class="text-white/80 text-sm font-medium hidden sm:block">Manager</span>
         </div>
+    </div>
+</header>
 
-        <div class="manager-card">
-            <div class="card-header-flex">
-                <h2 class="manager-card-title">Assign New Task</h2>
-                <button type="button" id="openAddEmployeeBtn" class="btn-secondary-outline">+ Add Employee</button>
-            </div>
+<!-- Page Content -->
+<main class="max-w-6xl mx-auto px-6 py-6 flex flex-col gap-5">
 
-            <form id="taskForm">
-                <div class="manager-form-group">
-                    <label for="employee">Employee</label>
-                    <select id="employee" name="employee" required>
-                        <option value="">Loading employees...</option>
-                    </select>
-                </div>
-
-                <div class="manager-form-group">
-                    <label for="task">Task</label>
-                    <input type="text" id="task" name="task" placeholder="Enter task description" required>
-                </div>
-
-                <div class="manager-form-group">
-                    <label for="deadline_date">Deadline Date</label>
-                    <input type="date" id="deadline_date" name="deadline_date" required>
-                </div>
-
-                <div class="manager-form-group">
-                    <label for="deadline_time">Deadline Time</label>
-                    <input type="time" id="deadline_time" name="deadline_time" required>
-                </div>
-
-                <button type="submit" class="manager-btn">ASSIGN TASK</button>
-            </form>
-
-            <div class="manager-status">
-                <p id="statusText">● Ready</p>
-            </div>
-
-            <div id="feedbackMessage" class="manager-feedback"></div>
+    <!-- Page Title -->
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-xl font-bold text-gray-800 tracking-tight">Dashboard Overview</h1>
+            <p class="text-xs text-muted mt-0.5">Track team tasks, deadlines and performance in real time.</p>
         </div>
+        <button type="button" id="openAddEmployeeBtn" class="btn-outline text-xs py-2">
+            <span class="material-symbols-outlined" style="font-size:15px;">person_add</span>
+            Add Employee
+        </button>
+    </div>
 
-        <!-- Add Employee Modal -->
-        <div id="addEmployeeModal" class="modal-backdrop" style="display: none;">
-            <div class="manager-card modal-card">
-                <h2 class="manager-card-title" style="text-align: left; margin-bottom: 20px;">Add New Employee</h2>
-                <form id="addEmployeeForm">
-                    <div class="manager-form-group">
-                        <label for="empName">Name</label>
-                        <input type="text" id="empName" placeholder="e.g. Rahul Sharma" required>
-                    </div>
-                    <div class="manager-form-group">
-                        <label for="empEmail">Gmail</label>
-                        <input type="email" id="empEmail" placeholder="e.g. rahulsharma@gmail.com" required>
-                    </div>
-                    <div class="manager-form-group">
-                        <label for="empDept">Department</label>
-                        <input type="text" id="empDept" placeholder="e.g. Engineering" required>
-                    </div>
-                    <div id="addEmpFeedback" class="manager-feedback"></div>
-                    <div class="modal-actions">
-                        <button type="submit" class="manager-btn modal-submit-btn">Add Employee</button>
-                        <button type="button" id="cancelAddEmployeeBtn" class="btn-cancel">Cancel</button>
-                    </div>
-                </form>
+    <!-- KPI Cards -->
+    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+        <!-- Total -->
+        <div class="card p-4">
+            <div class="flex items-center justify-between mb-2">
+                <span class="text-[11px] font-semibold text-muted uppercase tracking-wider">Total</span>
+                <span class="material-symbols-outlined text-teal/60">assignment</span>
             </div>
+            <div id="kpiTotalTasks" class="kpi-num text-gray-800">—</div>
+            <p class="text-[11px] text-muted mt-1">Tasks assigned</p>
         </div>
-
-        <div class="manager-footer">
-            <button onclick="window.location.href='index.html'" class="manager-btn-logout">LOGOUT</button>
+        <!-- Active -->
+        <div class="card p-4">
+            <div class="flex items-center justify-between mb-2">
+                <span class="text-[11px] font-semibold text-muted uppercase tracking-wider">Active</span>
+                <span class="material-symbols-outlined" style="color:#1f5e5b;">pending_actions</span>
+            </div>
+            <div id="kpiActiveTasks" class="kpi-num text-gray-800">—</div>
+            <p class="text-[11px] text-muted mt-1">In progress</p>
+        </div>
+        <!-- Upcoming -->
+        <div class="card p-4">
+            <div class="flex items-center justify-between mb-2">
+                <span class="text-[11px] font-semibold text-muted uppercase tracking-wider">Upcoming</span>
+                <span class="material-symbols-outlined" style="color:#785a00;">event</span>
+            </div>
+            <div id="kpiUpcomingDeadlines" class="kpi-num text-amber-700">—</div>
+            <p class="text-[11px] text-muted mt-1">Due soon</p>
+        </div>
+        <!-- Past Due -->
+        <div class="card p-4" style="border-color:#ffdad6; background:#fff9f9;">
+            <div class="flex items-center justify-between mb-2">
+                <span class="text-[11px] font-semibold uppercase tracking-wider" style="color:#ba1a1a;">Past Due</span>
+                <span class="material-symbols-outlined" style="color:#ba1a1a;">warning</span>
+            </div>
+            <div id="kpiPastDueTasks" class="kpi-num" style="color:#ba1a1a;">—</div>
+            <p class="text-[11px] text-muted mt-1">Need attention</p>
+        </div>
+        <!-- Completed -->
+        <div class="card p-4" style="border-color:#b2dfd7; background:#f2fbf9;">
+            <div class="flex items-center justify-between mb-2">
+                <span class="text-[11px] font-semibold uppercase tracking-wider" style="color:#006762;">Done</span>
+                <span class="material-symbols-outlined" style="color:#006762;">check_circle</span>
+            </div>
+            <div id="kpiCompletedTasks" class="kpi-num" style="color:#006762;">—</div>
+            <p class="text-[11px] text-muted mt-1">Completed</p>
         </div>
     </div>
 
-    <script src="js/manager.js"></script>
+    <!-- Assign Task + Charts Row -->
+    <div class="grid grid-cols-1 lg:grid-cols-5 gap-5">
+
+        <!-- Assign New Task Form -->
+        <div class="card p-5 lg:col-span-3 flex flex-col gap-4">
+            <div>
+                <h2 class="text-base font-semibold text-gray-800">Assign New Task</h2>
+                <p class="text-[12px] text-muted mt-0.5">Fill in the details below to assign a task to a team member.</p>
+            </div>
+            <form id="taskForm" class="flex flex-col gap-3">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="text-[11.5px] font-medium text-gray-600 mb-1 block">Employee</label>
+                        <select id="employee" name="employee" required class="form-input">
+                            <option value="">Select employee…</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-[11.5px] font-medium text-gray-600 mb-1 block">Priority</label>
+                        <div class="flex gap-4 mt-2.5">
+                            <label class="flex items-center gap-1.5 cursor-pointer text-[12.5px] text-gray-600">
+                                <input type="radio" name="priority" value="Low" class="accent-teal"/> Low
+                            </label>
+                            <label class="flex items-center gap-1.5 cursor-pointer text-[12.5px] text-gray-600">
+                                <input type="radio" name="priority" value="Medium" checked class="accent-teal"/> Medium
+                            </label>
+                            <label class="flex items-center gap-1.5 cursor-pointer text-[12.5px] text-gray-700 font-medium">
+                                <input type="radio" name="priority" value="High" class="accent-red-600"/> High
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <label class="text-[11.5px] font-medium text-gray-600 mb-1 block">Task Description</label>
+                    <input id="task" name="task" required type="text" placeholder="Describe the task…" class="form-input"/>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="text-[11.5px] font-medium text-gray-600 mb-1 block">Deadline Date</label>
+                        <input id="deadline_date" name="deadline_date" required type="date" class="form-input"/>
+                    </div>
+                    <div>
+                        <label class="text-[11.5px] font-medium text-gray-600 mb-1 block">Deadline Time</label>
+                        <input id="deadline_time" name="deadline_time" required type="time" class="form-input"/>
+                    </div>
+                </div>
+
+                <div id="feedbackMessage" class="hidden text-[12.5px]"></div>
+
+                <div class="flex justify-end pt-1">
+                    <button type="submit" class="btn-primary">
+                        Assign Task
+                        <span class="material-symbols-outlined" style="font-size:16px;">arrow_forward</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Donut + Legend -->
+        <div class="card p-5 lg:col-span-2 flex flex-col">
+            <h3 class="text-sm font-semibold text-gray-800 mb-4">Task Status Breakdown</h3>
+            <div class="flex-1 flex flex-col items-center justify-center gap-4">
+                <div id="donutChartGraphic" class="w-36 h-36 rounded-full" style="background: conic-gradient(from 0deg, #1f5e5b 0% 0%, #e2eceb 0% 100%);">
+                    <div class="donut-center">
+                        <div class="w-24 h-24 rounded-full bg-white flex flex-col items-center justify-center shadow-sm">
+                            <span id="donutPercentText" class="text-xl font-bold text-teal">0%</span>
+                            <span class="text-[10px] text-muted">Completed</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-x-6 gap-y-2 text-[11.5px] w-full max-w-[200px]">
+                    <div class="flex items-center gap-1.5"><div class="w-2.5 h-2.5 rounded-full bg-teal shrink-0"></div><span id="donutDoneLegend" class="text-muted">Done 0%</span></div>
+                    <div class="flex items-center gap-1.5"><div class="w-2.5 h-2.5 rounded-full bg-blue-200 shrink-0"></div><span id="donutAssignedLegend" class="text-muted">Assigned 0%</span></div>
+                    <div class="flex items-center gap-1.5"><div class="w-2.5 h-2.5 rounded-full bg-amber-300 shrink-0"></div><span id="donutProgressLegend" class="text-muted">In Prog 0%</span></div>
+                    <div class="flex items-center gap-1.5"><div class="w-2.5 h-2.5 rounded-full bg-rose-300 shrink-0"></div><span id="donutPastDueLegend" class="text-muted">Past Due 0%</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Team Performance + Right Column -->
+    <div class="grid grid-cols-1 lg:grid-cols-5 gap-5">
+
+        <!-- Team Performance (Bar Chart + List) -->
+        <div class="card p-5 lg:col-span-3 flex flex-col gap-4">
+            <div class="flex items-center justify-between">
+                <h3 class="text-sm font-semibold text-gray-800">Team Performance</h3>
+                <div class="flex items-center gap-3 text-[11px] text-muted">
+                    <span class="flex items-center gap-1"><span class="inline-block w-2.5 h-2.5 rounded-full bg-blue-200"></span>Assigned</span>
+                    <span class="flex items-center gap-1"><span class="inline-block w-2.5 h-2.5 rounded-full bg-teal"></span>Completed</span>
+                </div>
+            </div>
+
+            <!-- Bar Chart -->
+            <div class="flex items-end gap-3 h-28 border-b border-l border-border px-2 pb-0">
+                <div id="barChartContainer" class="flex items-end justify-around gap-3 w-full h-full">
+                    <!-- Dynamic -->
+                </div>
+            </div>
+
+            <!-- Employee List -->
+            <div id="teamPerformanceContainer" class="flex flex-col gap-2">
+                <!-- Dynamic -->
+            </div>
+        </div>
+
+        <!-- Right: Deadlines + Needs Attention -->
+        <div class="lg:col-span-2 flex flex-col gap-4">
+
+            <!-- Upcoming Deadlines -->
+            <div class="card p-5">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="text-sm font-semibold text-gray-800">Upcoming Deadlines</h3>
+                    <span class="material-symbols-outlined text-amber-500">schedule</span>
+                </div>
+                <div id="upcomingDeadlinesContainer" class="flex flex-col gap-2">
+                    <!-- Dynamic -->
+                </div>
+            </div>
+
+            <!-- Needs Attention -->
+            <div class="card p-5" style="border-color:#ffdad6;">
+                <div class="flex items-center gap-1.5 mb-3">
+                    <span class="material-symbols-outlined" style="color:#ba1a1a;">error</span>
+                    <h3 class="text-sm font-semibold" style="color:#ba1a1a;">Needs Attention</h3>
+                </div>
+                <div id="pastDueContainer">
+                    <!-- Dynamic -->
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+
+<!-- Add Employee Modal -->
+<div id="addEmployeeModal" class="modal-backdrop hidden">
+    <div class="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl mx-4">
+        <h2 class="text-base font-bold text-gray-800 mb-4">Add New Employee</h2>
+        <form id="addEmployeeForm" class="flex flex-col gap-3">
+            <div>
+                <label for="empName" class="text-[11.5px] font-medium text-gray-600 mb-1 block">Full Name</label>
+                <input type="text" id="empName" class="form-input" placeholder="e.g. Rahul Sharma" required>
+            </div>
+            <div>
+                <label for="empEmail" class="text-[11.5px] font-medium text-gray-600 mb-1 block">Gmail Address</label>
+                <input type="email" id="empEmail" class="form-input" placeholder="e.g. rahulsharma@gmail.com" required>
+            </div>
+            <div>
+                <label for="empDept" class="text-[11.5px] font-medium text-gray-600 mb-1 block">Department</label>
+                <input type="text" id="empDept" class="form-input" placeholder="e.g. Engineering" required>
+            </div>
+            <div id="addEmpFeedback" class="text-[12px] font-medium mt-1 hidden"></div>
+            <div class="flex justify-end gap-2 mt-2">
+                <button type="button" id="cancelAddEmployeeBtn" class="btn-outline text-xs py-2 px-4">Cancel</button>
+                <button type="submit" class="btn-primary text-xs py-2 px-5">Add Employee</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script src="js/manager.js"></script>
 </body>
 </html>

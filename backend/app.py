@@ -37,6 +37,21 @@ def init_db():
         cursor.execute("ALTER TABLE tasks ADD COLUMN assigned_by TEXT NOT NULL DEFAULT 'Prapti Chavan'")
         conn.commit()
 
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS meetings (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            employee_name TEXT NOT NULL,
+            title TEXT NOT NULL,
+            description TEXT,
+            start_time TEXT NOT NULL,
+            end_time TEXT NOT NULL,
+            host TEXT NOT NULL,
+            participants_count INTEGER DEFAULT 1,
+            link TEXT
+        )
+    ''')
+    conn.commit()
+
     conn.close()
 
 
@@ -414,6 +429,91 @@ def update_task_status(task_id):
         }), 500
 
 
+@app.route('/meetings/<employee_name>', methods=['GET'])
+def get_meetings(employee_name):
+    if not employee_name:
+        return jsonify({'success': False, 'message': 'Employee name is required'}), 400
+
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        
+        cursor.execute(
+            'SELECT id, employee_name, title, description, start_time, end_time, host, participants_count, link '
+            'FROM meetings WHERE LOWER(employee_name) = LOWER(?)',
+            (employee_name,)
+        )
+        rows = cursor.fetchall()
+        conn.close()
+
+        meetings = []
+        for row in rows:
+            meetings.append({
+                'id': row['id'],
+                'employee_name': row['employee_name'],
+                'title': row['title'],
+                'description': row['description'],
+                'start_time': row['start_time'],
+                'end_time': row['end_time'],
+                'host': row['host'],
+                'participants_count': row['participants_count'],
+                'link': row['link']
+            })
+
+        return jsonify({
+            'success': True,
+            'meetings': meetings
+        }), 200
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Error fetching meetings: {str(e)}'
+        }), 500
+
+
+@app.route('/assign-meeting', methods=['POST'])
+def assign_meeting():
+    data = request.get_json() or {}
+    employee_name = data.get('employee_name', '').strip()
+    title = data.get('title', '').strip()
+    description = data.get('description', '').strip()
+    start_time = data.get('start_time', '').strip()
+    end_time = data.get('end_time', '').strip()
+    host = data.get('host', '').strip()
+    participants_count = data.get('participants_count', 1)
+    link = data.get('link', '').strip()
+
+    if not employee_name or not title or not start_time or not end_time or not host:
+        return jsonify({
+            'success': False,
+            'message': 'Missing required fields.'
+        }), 400
+
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute(
+            'INSERT INTO meetings (employee_name, title, description, start_time, end_time, host, participants_count, link) '
+            'VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+            (employee_name, title, description, start_time, end_time, host, participants_count, link)
+        )
+        conn.commit()
+        meeting_id = cursor.lastrowid
+        conn.close()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Meeting assigned successfully',
+            'meeting_id': meeting_id
+        }), 200
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Failed to store meeting: {str(e)}'
+        }), 500
+
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5001, debug=True)
-

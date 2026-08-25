@@ -291,16 +291,35 @@
                 </div>
 
                 <!-- Join Meeting Card -->
-                <div class="px-card px-meeting-widget-card">
-                    <div class="px-meeting-widget-inner">
-                        <div class="px-meeting-ico-box">
-                            <span class="material-symbols-outlined">videocam</span>
+                <div class="px-card px-meeting-widget-card" id="meetingWidgetContainer">
+                    <div class="px-meeting-widget-inner" style="flex-direction: column; align-items: stretch; gap: 12px;">
+                        <div style="display: flex; align-items: center; justify-content: space-between;">
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <div class="px-meeting-ico-box">
+                                    <span class="material-symbols-outlined">videocam</span>
+                                </div>
+                                <div class="px-meeting-widget-info">
+                                    <h4 class="px-meeting-widget-title" id="meetingTitle">Join Meeting</h4>
+                                    <p class="px-meeting-widget-sub" id="meetingSub">No upcoming team meeting scheduled</p>
+                                </div>
+                            </div>
+                            <span id="meetingStatusBadge" style="display: none; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;"></span>
                         </div>
-                        <div class="px-meeting-widget-info">
-                            <h4 class="px-meeting-widget-title">Join Meeting</h4>
-                            <p class="px-meeting-widget-sub">No upcoming team meeting scheduled</p>
+                        
+                        <div id="meetingDetailsBox" style="display: none; flex-direction: column; gap: 6px; font-size: 13px; color: #5a6665; background: #f8f9fa; padding: 12px; border-radius: 8px; line-height: 1.4;">
+                            <div><strong>Date:</strong> <span id="meetingDate"></span></div>
+                            <div><strong>Time:</strong> <span id="meetingTime"></span> &nbsp;|&nbsp; <strong>Duration:</strong> <span id="meetingDuration"></span></div>
+                            <div><strong>Organizer:</strong> <span id="meetingHost"></span></div>
+                            <div><strong>Participants:</strong> <span id="meetingParticipants"></span></div>
+                            <p id="meetingDescription" style="margin-top: 6px; border-top: 1px solid #e1e8e7; padding-top: 8px; font-style: italic; color: #475569; display: none;"></p>
                         </div>
-                        <button type="button" class="px-btn-join-now" onclick="joinMeetingPrompt()">Join Now</button>
+                        
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px;">
+                            <a href="#" id="meetingAddToCalendar" style="display: none; font-size: 13px; color: #1a6f7d; text-decoration: none; font-weight: 600;">
+                                + Add to Calendar
+                            </a>
+                            <a href="#" target="_blank" class="px-btn-join-now" id="joinMeetingBtn" style="pointer-events: none; opacity: 0.5; text-decoration: none; text-align: center;">Join Now</a>
+                        </div>
                     </div>
                 </div>
 
