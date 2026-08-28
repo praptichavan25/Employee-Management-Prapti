@@ -4,111 +4,600 @@
     <meta charset="utf-8"/>
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
     <title>PHOENIX — Project Manager Dashboard</title>
+    <meta name="description" content="PHOENIX Project Manager Dashboard — track team tasks, deadlines and performance in real time."/>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+
+    <!-- Tailwind for responsive grid utilities only -->
     <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@600;700;800&display=swap" rel="stylesheet"/>
-    <link rel="stylesheet" href="css/styles.css">
     <script>
         tailwind.config = {
             theme: {
                 extend: {
-                    fontFamily: { sans: ['Inter', 'sans-serif'] },
-                    colors: {
-                        teal: { DEFAULT: '#1f5e5b', light: '#e6f2f1', mid: '#006762', dark: '#18363A' },
-                        amber: { soft: '#fff8e1', badge: '#ffdf9b', text: '#785a00' },
-                        rose: { soft: '#fff1f0', badge: '#ffdad6', text: '#ba1a1a' },
-                        mint: { soft: '#e8f8f2', text: '#006762' },
-                        muted: '#6b7c7b',
-                        border: '#dce8e6',
-                    }
+                    fontFamily: { sans: ['Poppins', 'sans-serif'] }
                 }
             }
         }
     </script>
-    <style>
-        body { background: #f4f8f7; font-family: 'Inter', sans-serif; }
 
-        /* Card */
-        .card {
-            background: #ffffff;
-            border: 1px solid #e2eceb;
-            border-radius: 14px;
-            box-shadow: 0 1px 6px rgba(20,60,58,0.06);
+    <style>
+        /* =====================================================
+           PHOENIX Apple/macOS Design System
+           ===================================================== */
+
+        :root {
+            --phoenix-teal:      #1F5F5B;
+            --phoenix-teal-dark: #174744;
+            --phoenix-teal-mid:  #2A7A74;
+            --phoenix-teal-soft: #DDEDEA;
+            --phoenix-teal-xsoft:#EEF7F5;
+            --phoenix-ivory:     #F7F6F2;
+            --phoenix-card:      #FFFFFF;
+            --phoenix-gold:      #C9A86A;
+            --phoenix-gold-soft: #FDF5E6;
+            --phoenix-muted:     #7A8C8B;
+            --phoenix-border:    #E8EEEC;
+            --phoenix-border-soft: #F0F4F3;
+
+            /* Status colors */
+            --status-success:    #15803D;
+            --status-success-bg: #F0FDF4;
+            --status-success-bd: #BBF7D0;
+            --status-blue:       #1D6FA4;
+            --status-blue-bg:    #EFF6FF;
+            --status-blue-bd:    #BFDBFE;
+            --status-amber:      #92400E;
+            --status-amber-bg:   #FFFBEB;
+            --status-amber-bd:   #FDE68A;
+            --status-red:        #991B1B;
+            --status-red-bg:     #FFF5F5;
+            --status-red-bd:     #FECACA;
+            --status-red-accent: #DC2626;
+
+            /* Apple-style shadows */
+            --shadow-card:  0 4px 12px rgba(15,23,42,0.04), 0 12px 32px rgba(15,23,42,0.06);
+            --shadow-hover: 0 8px 24px rgba(15,23,42,0.08), 0 20px 48px rgba(15,23,42,0.10);
+            --shadow-btn:   0 4px 14px rgba(31,95,91,0.25);
+            --shadow-btn-hover: 0 6px 20px rgba(31,95,91,0.38);
+
+            --radius-card: 20px;
+            --radius-inner: 12px;
+            --radius-pill: 999px;
         }
 
-        /* Material icons */
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-font-smoothing: antialiased; }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: var(--phoenix-ivory);
+            color: #1A2D2B;
+            min-height: 100vh;
+        }
+
+        /* ---- MATERIAL ICONS ---- */
         .material-symbols-outlined {
             font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20;
-            font-size: 18px;
             vertical-align: middle;
+            line-height: 1;
         }
 
-        /* Form inputs */
-        .form-input {
+        /* =====================================================
+           HEADER
+           ===================================================== */
+        .px-header {
+            position: sticky;
+            top: 0;
+            z-index: 200;
+            background: rgba(255,255,255,0.92);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--phoenix-border);
+            box-shadow: 0 1px 0 rgba(15,23,42,0.04);
+        }
+
+        .px-header-inner {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 0 28px;
+            height: 64px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+        }
+
+        .px-header-left {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .px-header-logo-img {
+            height: 34px;
+            width: auto;
+        }
+
+        .px-header-divider {
+            width: 1px;
+            height: 22px;
+            background: var(--phoenix-border);
+        }
+
+        .px-header-title {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--phoenix-muted);
+            letter-spacing: 0.01em;
+        }
+
+        .px-header-right {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .px-role-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            background: var(--phoenix-teal-xsoft);
+            color: var(--phoenix-teal);
+            font-size: 11px;
+            font-weight: 600;
+            padding: 5px 12px;
+            border-radius: var(--phoenix-pill);
+            letter-spacing: 0.02em;
+        }
+
+        /* =====================================================
+           MAIN LAYOUT
+           ===================================================== */
+        .px-main {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 28px 28px 60px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        /* ---- Page title row ---- */
+        .px-page-title-row {
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .px-page-title {
+            font-size: 28px;
+            font-weight: 700;
+            color: #0F1F1E;
+            letter-spacing: -0.5px;
+            line-height: 1.15;
+        }
+
+        .px-page-sub {
+            font-size: 13px;
+            color: var(--phoenix-muted);
+            margin-top: 3px;
+            font-weight: 400;
+        }
+
+        /* =====================================================
+           CARDS
+           ===================================================== */
+        .px-card {
+            background: var(--phoenix-card);
+            border: 1px solid var(--phoenix-border);
+            border-radius: var(--radius-card);
+            box-shadow: var(--shadow-card);
+            transition: transform 0.22s ease, box-shadow 0.22s ease;
+        }
+
+        .px-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-hover);
+        }
+
+        /* =====================================================
+           KPI CARDS
+           ===================================================== */
+        .px-kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 14px;
+        }
+
+        @media (max-width: 1024px) {
+            .px-kpi-grid { grid-template-columns: repeat(3, 1fr); }
+        }
+        @media (max-width: 640px) {
+            .px-kpi-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+
+        .px-kpi-card {
+            background: var(--phoenix-card);
+            border: 1px solid var(--phoenix-border);
+            border-radius: var(--radius-card);
+            box-shadow: var(--shadow-card);
+            padding: 20px 18px 18px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            transition: transform 0.22s ease, box-shadow 0.22s ease;
+            cursor: default;
+        }
+
+        .px-kpi-card:hover {
+            transform: translateY(-3px);
+            box-shadow: var(--shadow-hover);
+        }
+
+        .px-kpi-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .px-kpi-label {
+            font-size: 10.5px;
+            font-weight: 600;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--phoenix-muted);
+        }
+
+        .px-kpi-icon-wrap {
+            width: 34px;
+            height: 34px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .px-kpi-num {
+            font-size: 34px;
+            font-weight: 700;
+            line-height: 1;
+            letter-spacing: -1px;
+            color: #0F1F1E;
+            transition: all 0.3s ease;
+        }
+
+        .px-kpi-desc {
+            font-size: 11.5px;
+            color: var(--phoenix-muted);
+            font-weight: 400;
+        }
+
+        /* KPI color variants */
+        .kpi-total   .px-kpi-icon-wrap { background: var(--phoenix-teal-soft); }
+        .kpi-total   .px-kpi-icon-wrap .material-symbols-outlined { color: var(--phoenix-teal); font-size: 18px; }
+
+        .kpi-active  .px-kpi-icon-wrap { background: var(--status-blue-bg); }
+        .kpi-active  .px-kpi-icon-wrap .material-symbols-outlined { color: var(--status-blue); font-size: 18px; }
+
+        .kpi-upcoming .px-kpi-icon-wrap { background: var(--status-amber-bg); }
+        .kpi-upcoming .px-kpi-icon-wrap .material-symbols-outlined { color: #B45309; font-size: 18px; }
+        .kpi-upcoming .px-kpi-num { color: #92400E; }
+
+        .kpi-pastdue {
+            background: var(--status-red-bg);
+            border-color: var(--status-red-bd);
+        }
+        .kpi-pastdue .px-kpi-label { color: var(--status-red); }
+        .kpi-pastdue .px-kpi-icon-wrap { background: rgba(220,38,38,0.08); }
+        .kpi-pastdue .px-kpi-icon-wrap .material-symbols-outlined { color: var(--status-red-accent); font-size: 18px; }
+        .kpi-pastdue .px-kpi-num { color: var(--status-red-accent); }
+
+        .kpi-done {
+            background: var(--status-success-bg);
+            border-color: var(--status-success-bd);
+        }
+        .kpi-done .px-kpi-label { color: var(--status-success); }
+        .kpi-done .px-kpi-icon-wrap { background: rgba(21,128,61,0.08); }
+        .kpi-done .px-kpi-icon-wrap .material-symbols-outlined { color: var(--status-success); font-size: 18px; }
+        .kpi-done .px-kpi-num { color: var(--status-success); }
+
+        /* =====================================================
+           TWO-COL SECTION GRID
+           ===================================================== */
+        .px-section-grid {
+            display: grid;
+            grid-template-columns: 3fr 2fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 900px) {
+            .px-section-grid { grid-template-columns: 1fr; }
+        }
+
+        /* =====================================================
+           ASSIGN TASK FORM — COMMAND CENTER
+           ===================================================== */
+        .px-form-card {
+            padding: 28px 28px 24px;
+        }
+
+        .px-section-header {
+            margin-bottom: 22px;
+        }
+
+        .px-section-title {
+            font-size: 17px;
+            font-weight: 600;
+            color: #0F1F1E;
+            letter-spacing: -0.2px;
+        }
+
+        .px-section-sub {
+            font-size: 12px;
+            color: var(--phoenix-muted);
+            margin-top: 3px;
+        }
+
+        /* Form fields */
+        .px-form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+            margin-bottom: 14px;
+        }
+
+        @media (max-width: 560px) {
+            .px-form-row { grid-template-columns: 1fr; }
+        }
+
+        .px-field {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .px-field-full {
+            margin-bottom: 14px;
+        }
+
+        .px-label {
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            color: #4A6461;
+        }
+
+        .px-input {
             width: 100%;
-            background: #f9fbfb;
-            border: 1px solid #dce8e6;
-            border-radius: 8px;
-            padding: 9px 12px;
+            background: #FAFCFB;
+            border: 1.5px solid var(--phoenix-border);
+            border-radius: var(--radius-inner);
+            padding: 10px 14px;
             font-size: 13.5px;
-            color: #1a2e2d;
+            font-family: 'Poppins', sans-serif;
+            color: #1A2D2B;
             outline: none;
-            transition: border-color 0.15s, box-shadow 0.15s;
+            transition: border-color 0.18s, box-shadow 0.18s;
             appearance: none;
         }
-        .form-input:focus {
-            border-color: #1f5e5b;
-            box-shadow: 0 0 0 3px rgba(31,94,91,0.08);
+
+        .px-input:focus {
+            border-color: var(--phoenix-teal);
+            box-shadow: 0 0 0 3px rgba(31,95,91,0.10);
+            background: #fff;
         }
-        select.form-input { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='%236b7c7b'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px; }
 
-        /* KPI */
-        .kpi-num { font-size: 28px; font-weight: 700; line-height: 1; }
+        .px-input::placeholder { color: #A8BFBD; }
 
-        /* Progress bar */
-        .progress-bar { height: 5px; border-radius: 99px; background: #e2eceb; overflow: hidden; }
-        .progress-fill { height: 100%; border-radius: 99px; background: #1f5e5b; transition: width 0.6s ease; }
+        .px-select {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%237A8C8B' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            padding-right: 36px;
+            cursor: pointer;
+        }
 
-        /* Badge */
-        .badge { display: inline-flex; align-items: center; padding: 2px 9px; border-radius: 99px; font-size: 11px; font-weight: 500; }
+        .px-textarea {
+            resize: vertical;
+            min-height: 46px;
+        }
 
-        /* Primary button */
-        .btn-primary {
-            background: #1f5e5b;
+        /* Segmented priority control */
+        .px-priority-seg {
+            display: flex;
+            background: var(--phoenix-border-soft);
+            border: 1.5px solid var(--phoenix-border);
+            border-radius: var(--radius-inner);
+            padding: 3px;
+            gap: 2px;
+        }
+
+        .px-priority-seg input[type="radio"] {
+            position: absolute;
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .px-priority-seg label {
+            flex: 1;
+            text-align: center;
+            padding: 7px 10px;
+            font-size: 12px;
+            font-weight: 500;
+            border-radius: 9px;
+            cursor: pointer;
+            color: var(--phoenix-muted);
+            transition: all 0.18s ease;
+            user-select: none;
+        }
+
+        .px-priority-seg input[type="radio"]:checked + label {
+            color: white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        }
+
+        .px-priority-seg input#prio-low:checked + label    { background: #0E7490; }
+        .px-priority-seg input#prio-medium:checked + label { background: #D97706; }
+        .px-priority-seg input#prio-high:checked + label   { background: #DC2626; }
+
+        .px-priority-seg label:hover:not(:has(~ input:checked)) {
+            background: rgba(31,95,91,0.07);
+            color: var(--phoenix-teal);
+        }
+
+        /* Date + Time row */
+        .px-datetime-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+            margin-bottom: 18px;
+        }
+
+        @media (max-width: 480px) {
+            .px-datetime-row { grid-template-columns: 1fr; }
+        }
+
+        .px-datetime-field {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .px-datetime-label {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            color: #4A6461;
+        }
+
+        .px-datetime-label .material-symbols-outlined {
+            font-size: 14px;
+            color: var(--phoenix-teal);
+        }
+
+        /* Feedback message */
+        .px-feedback {
+            display: none;
+            padding: 10px 14px;
+            border-radius: var(--radius-inner);
+            font-size: 12.5px;
+            font-weight: 500;
+            margin-bottom: 14px;
+        }
+        .px-feedback.show { display: block; }
+        .px-feedback.success {
+            background: var(--status-success-bg);
+            color: var(--status-success);
+            border: 1px solid var(--status-success-bd);
+        }
+        .px-feedback.error {
+            background: var(--status-red-bg);
+            color: var(--status-red-accent);
+            border: 1px solid var(--status-red-bd);
+        }
+
+        /* Assign button */
+        .px-btn-assign {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            background: var(--phoenix-teal);
             color: white;
             border: none;
-            border-radius: 8px;
-            padding: 9px 20px;
+            border-radius: 12px;
+            padding: 11px 22px;
+            font-family: 'Poppins', sans-serif;
             font-size: 13px;
             font-weight: 600;
             cursor: pointer;
+            box-shadow: var(--shadow-btn);
+            transition: all 0.2s ease;
+            letter-spacing: 0.01em;
+        }
+
+        .px-btn-assign:hover {
+            background: var(--phoenix-teal-mid);
+            box-shadow: var(--shadow-btn-hover);
+            transform: translateY(-1px);
+        }
+
+        .px-btn-assign:active {
+            transform: translateY(0);
+            box-shadow: var(--shadow-btn);
+        }
+
+        .px-btn-assign:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .px-btn-assign .material-symbols-outlined { font-size: 17px; }
+
+        /* Add Employee outline button */
+        .px-btn-outline {
             display: inline-flex;
             align-items: center;
             gap: 6px;
-            transition: background 0.15s, box-shadow 0.15s;
-        }
-        .btn-primary:hover { background: #006762; box-shadow: 0 3px 10px rgba(31,94,91,0.2); }
-        .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
-
-        .btn-outline {
             background: white;
-            color: #1f5e5b;
-            border: 1px solid #dce8e6;
-            border-radius: 8px;
-            padding: 8px 16px;
-            font-size: 13px;
-            font-weight: 500;
+            color: var(--phoenix-teal);
+            border: 1.5px solid var(--phoenix-border);
+            border-radius: 12px;
+            padding: 9px 16px;
+            font-family: 'Poppins', sans-serif;
+            font-size: 12.5px;
+            font-weight: 600;
             cursor: pointer;
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            transition: border-color 0.15s, background 0.15s;
+            transition: all 0.18s ease;
         }
-        .btn-outline:hover { border-color: #1f5e5b; background: #f4f8f7; }
 
-        /* Donut chart */
-        #donutChartGraphic { position: relative; }
-        .donut-center {
+        .px-btn-outline:hover {
+            border-color: var(--phoenix-teal);
+            background: var(--phoenix-teal-xsoft);
+            transform: translateY(-1px);
+        }
+
+        .px-btn-outline .material-symbols-outlined { font-size: 16px; }
+
+        /* =====================================================
+           DONUT CHART CARD
+           ===================================================== */
+        .px-donut-card {
+            padding: 24px 22px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .px-donut-wrap {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            padding: 8px 0;
+        }
+
+        #donutChartGraphic {
+            position: relative;
+            width: 160px;
+            height: 160px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .px-donut-center {
             position: absolute;
             inset: 0;
             display: flex;
@@ -117,251 +606,942 @@
             justify-content: center;
         }
 
-        /* Feedback */
-        .feedback-success { background: #e8f8f2; color: #006762; border-radius: 8px; padding: 8px 12px; font-size: 13px; }
-        .feedback-error { background: #fff1f0; color: #ba1a1a; border-radius: 8px; padding: 8px 12px; font-size: 13px; }
+        .px-donut-inner {
+            width: 110px;
+            height: 110px;
+            background: white;
+            border-radius: 50%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 12px rgba(15,23,42,0.06);
+        }
 
-        /* Modal */
-        .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.3); backdrop-filter: blur(4px); z-index: 50; display: flex; align-items: center; justify-content: center; }
+        .px-donut-pct {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--phoenix-teal);
+            line-height: 1;
+            letter-spacing: -0.5px;
+        }
+
+        .px-donut-sub {
+            font-size: 10px;
+            color: var(--phoenix-muted);
+            font-weight: 500;
+            margin-top: 2px;
+        }
+
+        .px-donut-legend {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            width: 100%;
+        }
+
+        .px-legend-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 12px;
+        }
+
+        .px-legend-left {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--phoenix-muted);
+        }
+
+        .px-legend-dot {
+            width: 9px;
+            height: 9px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .px-legend-count {
+            font-weight: 600;
+            color: #1A2D2B;
+            min-width: 24px;
+            text-align: right;
+        }
+
+        /* =====================================================
+           TEAM PERFORMANCE SECTION
+           ===================================================== */
+        .px-team-card {
+            padding: 24px 24px 20px;
+        }
+
+        .px-team-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 18px;
+        }
+
+        .px-team-legend {
+            display: flex;
+            gap: 14px;
+        }
+
+        .px-team-legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 10.5px;
+            color: var(--phoenix-muted);
+            font-weight: 500;
+        }
+
+        .px-team-legend-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        /* Bar Chart */
+        .px-bar-chart {
+            display: flex;
+            align-items: flex-end;
+            gap: 10px;
+            height: 110px;
+            border-bottom: 1.5px solid var(--phoenix-border);
+            border-left: 1.5px solid var(--phoenix-border);
+            padding: 0 8px 0 4px;
+            margin-bottom: 20px;
+            overflow-x: auto;
+        }
+
+        /* Employee performance rows */
+        .px-emp-row {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 12px 14px;
+            border-radius: 14px;
+            cursor: pointer;
+            transition: all 0.18s ease;
+            margin-bottom: 6px;
+        }
+
+        .px-emp-row:last-child { margin-bottom: 0; }
+
+        .px-emp-row:hover {
+            background: var(--phoenix-teal-xsoft);
+            transform: translateX(2px);
+        }
+
+        .px-emp-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            font-weight: 700;
+            flex-shrink: 0;
+            letter-spacing: 0.5px;
+        }
+
+        .px-emp-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .px-emp-name {
+            font-size: 13px;
+            font-weight: 600;
+            color: #0F1F1E;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .px-emp-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin-top: 4px;
+        }
+
+        .px-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            padding: 2px 8px;
+            border-radius: var(--phoenix-pill);
+            font-size: 10.5px;
+            font-weight: 500;
+        }
+
+        .px-chip-done  { background: var(--status-success-bg); color: var(--status-success); }
+        .px-chip-active{ background: var(--status-blue-bg); color: var(--status-blue); }
+        .px-chip-due   { background: var(--status-red-bg); color: var(--status-red-accent); }
+        .px-chip-total { background: var(--phoenix-teal-soft); color: var(--phoenix-teal); }
+
+        .px-emp-progress-wrap {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            width: 130px;
+            flex-shrink: 0;
+        }
+
+        .px-progress-bar {
+            flex: 1;
+            height: 5px;
+            background: var(--phoenix-border);
+            border-radius: var(--phoenix-pill);
+            overflow: hidden;
+        }
+
+        .px-progress-fill {
+            height: 100%;
+            background: var(--phoenix-teal);
+            border-radius: var(--phoenix-pill);
+            width: 0%;
+            transition: width 0.7s cubic-bezier(.22,.68,0,1.2);
+        }
+
+        .px-emp-pct {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--phoenix-teal);
+            min-width: 32px;
+            text-align: right;
+        }
+
+        /* Avatar palette */
+        .av-teal   { background: #C2E8E4; color: #0D5C58; }
+        .av-blue   { background: #BFDBFE; color: #1D4ED8; }
+        .av-amber  { background: #FDE68A; color: #78350F; }
+        .av-rose   { background: #FECDD3; color: #9F1239; }
+        .av-violet { background: #DDD6FE; color: #5B21B6; }
+        .av-lime   { background: #D9F99D; color: #365314; }
+
+        /* =====================================================
+           RIGHT COLUMN (Deadlines + Attention)
+           ===================================================== */
+        .px-right-col {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        /* Upcoming Deadlines */
+        .px-deadlines-card {
+            padding: 22px 20px;
+        }
+
+        .px-deadline-item {
+            display: flex;
+            gap: 12px;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--phoenix-border-soft);
+        }
+
+        .px-deadline-item:last-child { border-bottom: none; padding-bottom: 0; }
+        .px-deadline-item:first-child { padding-top: 0; }
+
+        .px-deadline-icon-col {
+            width: 36px;
+            height: 36px;
+            background: var(--status-amber-bg);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .px-deadline-icon-col .material-symbols-outlined {
+            font-size: 18px;
+            color: #B45309;
+        }
+
+        .px-deadline-body { flex: 1; min-width: 0; }
+
+        .px-deadline-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: #0F1F1E;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .px-deadline-meta {
+            font-size: 11px;
+            color: var(--phoenix-muted);
+            margin-top: 2px;
+        }
+
+        .px-deadline-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 2px 8px;
+            border-radius: var(--phoenix-pill);
+            font-size: 10.5px;
+            font-weight: 600;
+            margin-top: 5px;
+        }
+
+        .badge-today    { background: #FEF2F2; color: #DC2626; }
+        .badge-tomorrow { background: #FEF9C3; color: #92400E; }
+        .badge-upcoming { background: var(--phoenix-teal-soft); color: var(--phoenix-teal); }
+
+        /* Needs Attention */
+        .px-attention-card {
+            padding: 22px 20px;
+            border-color: #FECACA !important;
+            background: linear-gradient(135deg, #FFF8F8 0%, #FFFAFA 100%);
+        }
+
+        .px-attention-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .px-attention-header .material-symbols-outlined {
+            font-size: 20px;
+            color: var(--status-red-accent);
+        }
+
+        .px-attention-title {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--status-red-accent);
+        }
+
+        .px-overdue-item {
+            padding: 12px;
+            background: white;
+            border: 1px solid #FECACA;
+            border-radius: 12px;
+            margin-bottom: 10px;
+        }
+
+        .px-overdue-item:last-child { margin-bottom: 0; }
+
+        .px-overdue-task {
+            font-size: 13px;
+            font-weight: 600;
+            color: #0F1F1E;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .px-overdue-assignee {
+            font-size: 11.5px;
+            color: var(--phoenix-muted);
+            margin-top: 3px;
+        }
+
+        .px-overdue-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            margin-top: 8px;
+            padding: 3px 9px;
+            background: #FEF2F2;
+            color: var(--status-red-accent);
+            border-radius: var(--phoenix-pill);
+            font-size: 10.5px;
+            font-weight: 600;
+        }
+
+        .px-reminder-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            margin-top: 10px;
+            background: none;
+            border: 1.5px solid #FECACA;
+            color: var(--status-red-accent);
+            border-radius: 8px;
+            padding: 5px 12px;
+            font-family: 'Poppins', sans-serif;
+            font-size: 11.5px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.18s;
+        }
+
+        .px-reminder-btn:hover {
+            background: #FEF2F2;
+            border-color: var(--status-red-accent);
+        }
+
+        /* =====================================================
+           MODAL
+           ===================================================== */
+        .px-modal-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(15,23,42,0.4);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            z-index: 500;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .px-modal-card {
+            background: white;
+            border-radius: 22px;
+            padding: 28px 28px 24px;
+            width: 100%;
+            max-width: 400px;
+            box-shadow: 0 24px 64px rgba(15,23,42,0.18), 0 8px 24px rgba(15,23,42,0.10);
+            animation: modalIn 0.22s cubic-bezier(.34,1.5,.64,1) both;
+        }
+
+        @keyframes modalIn {
+            from { opacity: 0; transform: scale(0.94) translateY(8px); }
+            to   { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
+        .px-modal-title {
+            font-size: 17px;
+            font-weight: 700;
+            color: #0F1F1E;
+            margin-bottom: 20px;
+        }
+
+        .px-modal-field {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-bottom: 14px;
+        }
+
+        .px-modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 18px;
+        }
+
+        .px-btn-cancel {
+            display: inline-flex;
+            align-items: center;
+            background: var(--phoenix-border-soft);
+            color: var(--phoenix-muted);
+            border: 1.5px solid var(--phoenix-border);
+            border-radius: 12px;
+            padding: 9px 18px;
+            font-family: 'Poppins', sans-serif;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .px-btn-cancel:hover {
+            background: var(--phoenix-border);
+            color: #1A2D2B;
+        }
+
+        /* Add Emp feedback */
+        .px-modal-feedback {
+            display: none;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 500;
+            margin-top: -6px;
+            margin-bottom: 10px;
+        }
+        .px-modal-feedback.show { display: block; }
+        .px-modal-feedback.success { background: var(--status-success-bg); color: var(--status-success); }
+        .px-modal-feedback.error   { background: var(--status-red-bg); color: var(--status-red-accent); }
+
+        /* =====================================================
+           EMPTY / PLACEHOLDER STATES
+           ===================================================== */
+        .px-empty {
+            text-align: center;
+            padding: 24px 0;
+            color: var(--phoenix-muted);
+            font-size: 12.5px;
+        }
+
+        /* =====================================================
+           SCROLLBAR
+           ===================================================== */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #D1E4E1; border-radius: 999px; }
+        ::-webkit-scrollbar-thumb:hover { background: #B2CEC9; }
+
+        /* =====================================================
+           COUNT-UP ANIMATION
+           ===================================================== */
+        @keyframes countUp {
+            from { opacity: 0; transform: translateY(6px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .px-kpi-num.loaded {
+            animation: countUp 0.4s ease both;
+        }
     </style>
 </head>
+<body>
 
-<body class="min-h-screen">
-
-<!-- Top Header -->
-<header class="px-branding-header">
-    <div class="px-branding-inner">
-        <div class="px-header-logo-group">
-            <img src="assets/phoenix_logo_gold.png" alt="PHOENIX" class="px-header-logo-img" />
+<!-- ============================================================
+     TOP HEADER — macOS-style nav bar
+     ============================================================ -->
+<header class="px-header">
+    <div class="px-header-inner">
+        <!-- Left: Logo + context -->
+        <div class="px-header-left">
+            <img src="assets/phoenix_logo_gold.png" alt="PHOENIX" class="px-header-logo-img"/>
+            <div class="px-header-divider"></div>
+            <span class="px-header-title">Project Manager Dashboard</span>
         </div>
-        <span class="px-brand-badge" style="background-color: #E6F4F1; color: #006660; font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 9999px; letter-spacing: 0.3px;">Project Manager</span>
+
+        <!-- Right: Role badge + Add Employee button -->
+        <div class="px-header-right">
+            <span class="px-role-badge">
+                <span class="material-symbols-outlined" style="font-size:13px;">manage_accounts</span>
+                Project Manager
+            </span>
+            <button type="button" id="openAddEmployeeBtn" class="px-btn-outline">
+                <span class="material-symbols-outlined">person_add</span>
+                Add Employee
+            </button>
+        </div>
     </div>
 </header>
 
-<!-- Page Content -->
-<main class="max-w-6xl mx-auto px-6 py-6 flex flex-col gap-5">
+<!-- ============================================================
+     MAIN CONTENT
+     ============================================================ -->
+<main class="px-main">
 
-    <!-- Page Title -->
-    <div class="flex items-center justify-between">
+    <!-- Page Title Row -->
+    <div class="px-page-title-row">
         <div>
-            <h1 class="text-xl font-bold text-gray-800 tracking-tight">Dashboard Overview</h1>
-            <p class="text-xs text-muted mt-0.5">Track team tasks, deadlines and performance in real time.</p>
+            <h1 class="px-page-title">Dashboard Overview</h1>
+            <p class="px-page-sub">Track team tasks, deadlines and performance in real time.</p>
         </div>
-        <button type="button" id="openAddEmployeeBtn" class="btn-outline text-xs py-2">
-            <span class="material-symbols-outlined" style="font-size:15px;">person_add</span>
-            Add Employee
-        </button>
     </div>
 
-    <!-- KPI Cards -->
-    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-        <!-- Total -->
-        <div class="card p-4">
-            <div class="flex items-center justify-between mb-2">
-                <span class="text-[11px] font-semibold text-muted uppercase tracking-wider">Total</span>
-                <span class="material-symbols-outlined text-teal/60">assignment</span>
+    <!-- ============================================================
+         KPI CARDS
+         ============================================================ -->
+    <div class="px-kpi-grid">
+
+        <!-- Total Tasks -->
+        <div class="px-kpi-card kpi-total">
+            <div class="px-kpi-top">
+                <span class="px-kpi-label">Total Tasks</span>
+                <div class="px-kpi-icon-wrap">
+                    <span class="material-symbols-outlined">assignment</span>
+                </div>
             </div>
-            <div id="kpiTotalTasks" class="kpi-num text-gray-800">—</div>
-            <p class="text-[11px] text-muted mt-1">Tasks assigned</p>
+            <div id="kpiTotalTasks" class="px-kpi-num">—</div>
+            <p class="px-kpi-desc">Tasks assigned overall</p>
         </div>
+
         <!-- Active -->
-        <div class="card p-4">
-            <div class="flex items-center justify-between mb-2">
-                <span class="text-[11px] font-semibold text-muted uppercase tracking-wider">Active</span>
-                <span class="material-symbols-outlined" style="color:#1f5e5b;">pending_actions</span>
+        <div class="px-kpi-card kpi-active">
+            <div class="px-kpi-top">
+                <span class="px-kpi-label">Active</span>
+                <div class="px-kpi-icon-wrap">
+                    <span class="material-symbols-outlined">pending_actions</span>
+                </div>
             </div>
-            <div id="kpiActiveTasks" class="kpi-num text-gray-800">—</div>
-            <p class="text-[11px] text-muted mt-1">In progress</p>
+            <div id="kpiActiveTasks" class="px-kpi-num">—</div>
+            <p class="px-kpi-desc">In progress right now</p>
         </div>
+
         <!-- Upcoming -->
-        <div class="card p-4">
-            <div class="flex items-center justify-between mb-2">
-                <span class="text-[11px] font-semibold text-muted uppercase tracking-wider">Upcoming</span>
-                <span class="material-symbols-outlined" style="color:#785a00;">event</span>
+        <div class="px-kpi-card kpi-upcoming">
+            <div class="px-kpi-top">
+                <span class="px-kpi-label">Upcoming</span>
+                <div class="px-kpi-icon-wrap">
+                    <span class="material-symbols-outlined">event_upcoming</span>
+                </div>
             </div>
-            <div id="kpiUpcomingDeadlines" class="kpi-num text-amber-700">—</div>
-            <p class="text-[11px] text-muted mt-1">Due soon</p>
+            <div id="kpiUpcomingDeadlines" class="px-kpi-num">—</div>
+            <p class="px-kpi-desc">Due within deadline window</p>
         </div>
+
         <!-- Past Due -->
-        <div class="card p-4" style="border-color:#ffdad6; background:#fff9f9;">
-            <div class="flex items-center justify-between mb-2">
-                <span class="text-[11px] font-semibold uppercase tracking-wider" style="color:#ba1a1a;">Past Due</span>
-                <span class="material-symbols-outlined" style="color:#ba1a1a;">warning</span>
+        <div class="px-kpi-card kpi-pastdue">
+            <div class="px-kpi-top">
+                <span class="px-kpi-label">Past Due</span>
+                <div class="px-kpi-icon-wrap">
+                    <span class="material-symbols-outlined">warning_amber</span>
+                </div>
             </div>
-            <div id="kpiPastDueTasks" class="kpi-num" style="color:#ba1a1a;">—</div>
-            <p class="text-[11px] text-muted mt-1">Need attention</p>
+            <div id="kpiPastDueTasks" class="px-kpi-num">—</div>
+            <p class="px-kpi-desc">Need immediate attention</p>
         </div>
+
         <!-- Completed -->
-        <div class="card p-4" style="border-color:#b2dfd7; background:#f2fbf9;">
-            <div class="flex items-center justify-between mb-2">
-                <span class="text-[11px] font-semibold uppercase tracking-wider" style="color:#006762;">Done</span>
-                <span class="material-symbols-outlined" style="color:#006762;">check_circle</span>
+        <div class="px-kpi-card kpi-done">
+            <div class="px-kpi-top">
+                <span class="px-kpi-label">Completed</span>
+                <div class="px-kpi-icon-wrap">
+                    <span class="material-symbols-outlined">check_circle</span>
+                </div>
             </div>
-            <div id="kpiCompletedTasks" class="kpi-num" style="color:#006762;">—</div>
-            <p class="text-[11px] text-muted mt-1">Completed</p>
+            <div id="kpiCompletedTasks" class="px-kpi-num">—</div>
+            <p class="px-kpi-desc">Successfully finished</p>
         </div>
+
     </div>
 
-    <!-- Assign Task + Charts Row -->
-    <div class="grid grid-cols-1 lg:grid-cols-5 gap-5">
+    <!-- ============================================================
+         ASSIGN TASK + DONUT CHART ROW
+         ============================================================ -->
+    <div class="px-section-grid">
 
-        <!-- Assign New Task Form -->
-        <div class="card p-5 lg:col-span-3 flex flex-col gap-4">
-            <div>
-                <h2 class="text-base font-semibold text-gray-800">Assign New Task</h2>
-                <p class="text-[12px] text-muted mt-0.5">Fill in the details below to assign a task to a team member.</p>
+        <!-- Assign New Task — Command Center -->
+        <div class="px-card px-form-card">
+            <div class="px-section-header">
+                <h2 class="px-section-title">Assign New Task</h2>
+                <p class="px-section-sub">Fill in the details below to assign a task to a team member.</p>
             </div>
-            <form id="taskForm" class="flex flex-col gap-3">
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                        <label class="text-[11.5px] font-medium text-gray-600 mb-1 block">Employee</label>
-                        <select id="employee" name="employee" required class="form-input">
-                            <option value="">Select employee…</option>
+
+            <form id="taskForm">
+
+                <!-- Row 1: Employee + Priority -->
+                <div class="px-form-row">
+                    <div class="px-field">
+                        <label class="px-label" for="employee">Employee</label>
+                        <select id="employee" name="employee" required class="px-input px-select">
+                            <option value="">Search or select employee…</option>
                         </select>
                     </div>
-                    <div>
-                        <label class="text-[11.5px] font-medium text-gray-600 mb-1 block">Priority</label>
-                        <div class="flex gap-4 mt-2.5">
-                            <label class="flex items-center gap-1.5 cursor-pointer text-[12.5px] text-gray-600">
-                                <input type="radio" name="priority" value="Low" class="accent-teal"/> Low
-                            </label>
-                            <label class="flex items-center gap-1.5 cursor-pointer text-[12.5px] text-gray-600">
-                                <input type="radio" name="priority" value="Medium" checked class="accent-teal"/> Medium
-                            </label>
-                            <label class="flex items-center gap-1.5 cursor-pointer text-[12.5px] text-gray-700 font-medium">
-                                <input type="radio" name="priority" value="High" class="accent-red-600"/> High
-                            </label>
+                    <div class="px-field">
+                        <label class="px-label">Priority</label>
+                        <div class="px-priority-seg">
+                            <input type="radio" name="priority" value="Low" id="prio-low"/>
+                            <label for="prio-low">Low</label>
+                            <input type="radio" name="priority" value="Medium" id="prio-medium" checked/>
+                            <label for="prio-medium">Medium</label>
+                            <input type="radio" name="priority" value="High" id="prio-high"/>
+                            <label for="prio-high">High</label>
                         </div>
                     </div>
                 </div>
-                <div>
-                    <label class="text-[11.5px] font-medium text-gray-600 mb-1 block">Task Description</label>
-                    <input id="task" name="task" required type="text" placeholder="Describe the task…" class="form-input"/>
-                </div>
-                <div class="grid grid-cols-2 gap-3">
-                    <div>
-                        <label class="text-[11.5px] font-medium text-gray-600 mb-1 block">Deadline Date</label>
-                        <input id="deadline_date" name="deadline_date" required type="date" class="form-input"/>
-                    </div>
-                    <div>
-                        <label class="text-[11.5px] font-medium text-gray-600 mb-1 block">Deadline Time</label>
-                        <input id="deadline_time" name="deadline_time" required type="time" class="form-input"/>
+
+                <!-- Row 2: Task Description -->
+                <div class="px-field-full">
+                    <div class="px-field">
+                        <label class="px-label" for="task">Task Description</label>
+                        <input id="task" name="task" required type="text"
+                               placeholder="Describe the task in detail…"
+                               class="px-input"/>
                     </div>
                 </div>
 
-                <div id="feedbackMessage" class="hidden text-[12.5px]"></div>
+                <!-- Row 3: Deadline Date + Time -->
+                <div class="px-datetime-row">
+                    <div class="px-datetime-field">
+                        <span class="px-datetime-label">
+                            <span class="material-symbols-outlined">calendar_month</span>
+                            Deadline Date
+                        </span>
+                        <input id="deadline_date" name="deadline_date" required type="date" class="px-input"/>
+                    </div>
+                    <div class="px-datetime-field">
+                        <span class="px-datetime-label">
+                            <span class="material-symbols-outlined">schedule</span>
+                            Deadline Time
+                        </span>
+                        <input id="deadline_time" name="deadline_time" required type="time" class="px-input"/>
+                    </div>
+                </div>
 
-                <div class="flex justify-end pt-1">
-                    <button type="submit" class="btn-primary">
+                <!-- Feedback -->
+                <div id="feedbackMessage" class="px-feedback"></div>
+
+                <!-- Submit -->
+                <div style="display:flex; justify-content:flex-end;">
+                    <button type="submit" class="px-btn-assign">
                         Assign Task
-                        <span class="material-symbols-outlined" style="font-size:16px;">arrow_forward</span>
+                        <span class="material-symbols-outlined">arrow_forward</span>
                     </button>
                 </div>
+
             </form>
         </div>
 
-        <!-- Donut + Legend -->
-        <div class="card p-5 lg:col-span-2 flex flex-col">
-            <h3 class="text-sm font-semibold text-gray-800 mb-4">Task Status Breakdown</h3>
-            <div class="flex-1 flex flex-col items-center justify-center gap-4">
-                <div id="donutChartGraphic" class="w-36 h-36 rounded-full" style="background: conic-gradient(from 0deg, #1f5e5b 0% 0%, #e2eceb 0% 100%);">
-                    <div class="donut-center">
-                        <div class="w-24 h-24 rounded-full bg-white flex flex-col items-center justify-center shadow-sm">
-                            <span id="donutPercentText" class="text-xl font-bold text-teal">0%</span>
-                            <span class="text-[10px] text-muted">Completed</span>
+        <!-- Task Status Breakdown — Donut Chart -->
+        <div class="px-card px-donut-card">
+            <div class="px-section-header" style="margin-bottom: 8px;">
+                <h2 class="px-section-title">Task Breakdown</h2>
+                <p class="px-section-sub">Status distribution across all tasks.</p>
+            </div>
+
+            <div class="px-donut-wrap">
+                <!-- Donut -->
+                <div id="donutChartGraphic" style="background: conic-gradient(from 0deg, #1F5F5B 0% 0%, #E8EEEC 0% 100%);">
+                    <div class="px-donut-center">
+                        <div class="px-donut-inner">
+                            <span id="donutPercentText" class="px-donut-pct">0%</span>
+                            <span class="px-donut-sub">Completed</span>
                         </div>
                     </div>
                 </div>
-                <div class="grid grid-cols-2 gap-x-6 gap-y-2 text-[11.5px] w-full max-w-[200px]">
-                    <div class="flex items-center gap-1.5"><div class="w-2.5 h-2.5 rounded-full bg-teal shrink-0"></div><span id="donutDoneLegend" class="text-muted">Done 0%</span></div>
-                    <div class="flex items-center gap-1.5"><div class="w-2.5 h-2.5 rounded-full bg-blue-200 shrink-0"></div><span id="donutAssignedLegend" class="text-muted">Assigned 0%</span></div>
-                    <div class="flex items-center gap-1.5"><div class="w-2.5 h-2.5 rounded-full bg-amber-300 shrink-0"></div><span id="donutProgressLegend" class="text-muted">In Prog 0%</span></div>
-                    <div class="flex items-center gap-1.5"><div class="w-2.5 h-2.5 rounded-full bg-rose-300 shrink-0"></div><span id="donutPastDueLegend" class="text-muted">Past Due 0%</span></div>
+
+                <!-- Legend -->
+                <div class="px-donut-legend">
+                    <div class="px-legend-item">
+                        <div class="px-legend-left">
+                            <div class="px-legend-dot" style="background:#1F5F5B;"></div>
+                            <span>Completed</span>
+                        </div>
+                        <span id="donutDoneLegend" class="px-legend-count">—</span>
+                    </div>
+                    <div class="px-legend-item">
+                        <div class="px-legend-left">
+                            <div class="px-legend-dot" style="background:#BFDBFE;"></div>
+                            <span>Assigned</span>
+                        </div>
+                        <span id="donutAssignedLegend" class="px-legend-count">—</span>
+                    </div>
+                    <div class="px-legend-item">
+                        <div class="px-legend-left">
+                            <div class="px-legend-dot" style="background:#FDE68A;"></div>
+                            <span>In Progress</span>
+                        </div>
+                        <span id="donutProgressLegend" class="px-legend-count">—</span>
+                    </div>
+                    <div class="px-legend-item">
+                        <div class="px-legend-left">
+                            <div class="px-legend-dot" style="background:#FECACA;"></div>
+                            <span>Past Due</span>
+                        </div>
+                        <span id="donutPastDueLegend" class="px-legend-count">—</span>
+                    </div>
                 </div>
             </div>
         </div>
+
     </div>
 
-    <!-- Team Performance + Right Column -->
-    <div class="grid grid-cols-1 lg:grid-cols-5 gap-5">
+    <!-- ============================================================
+         TEAM PERFORMANCE + RIGHT COLUMN
+         ============================================================ -->
+    <div class="px-section-grid">
 
-        <!-- Team Performance (Bar Chart + List) -->
-        <div class="card p-5 lg:col-span-3 flex flex-col gap-4">
-            <div class="flex items-center justify-between">
-                <h3 class="text-sm font-semibold text-gray-800">Team Performance</h3>
-                <div class="flex items-center gap-3 text-[11px] text-muted">
-                    <span class="flex items-center gap-1"><span class="inline-block w-2.5 h-2.5 rounded-full bg-blue-200"></span>Assigned</span>
-                    <span class="flex items-center gap-1"><span class="inline-block w-2.5 h-2.5 rounded-full bg-teal"></span>Completed</span>
+        <!-- Team Performance Card -->
+        <div class="px-card px-team-card">
+            <div class="px-team-header">
+                <div>
+                    <h2 class="px-section-title">Team Performance</h2>
+                    <p class="px-section-sub" style="margin-top:2px;">Individual task completion rates &amp; activity.</p>
+                </div>
+                <div class="px-team-legend">
+                    <div class="px-team-legend-item">
+                        <div class="px-team-legend-dot" style="background:#BFDBFE;"></div>
+                        Assigned
+                    </div>
+                    <div class="px-team-legend-item">
+                        <div class="px-team-legend-dot" style="background:#1F5F5B;"></div>
+                        Completed
+                    </div>
                 </div>
             </div>
 
             <!-- Bar Chart -->
-            <div class="flex items-end gap-3 h-28 border-b border-l border-border px-2 pb-0">
-                <div id="barChartContainer" class="flex items-end justify-around gap-3 w-full h-full">
-                    <!-- Dynamic -->
+            <div class="px-bar-chart">
+                <div id="barChartContainer" style="display:flex; align-items:flex-end; justify-content:space-around; gap:10px; width:100%; height:100%;">
+                    <!-- Dynamic bars injected by manager.js -->
                 </div>
             </div>
 
-            <!-- Employee List -->
-            <div id="teamPerformanceContainer" class="flex flex-col gap-2">
-                <!-- Dynamic -->
+            <!-- Employee Performance List -->
+            <div id="teamPerformanceContainer" style="margin-top:4px;">
+                <!-- Dynamic rows injected by manager.js -->
             </div>
         </div>
 
-        <!-- Right: Deadlines + Needs Attention -->
-        <div class="lg:col-span-2 flex flex-col gap-4">
+        <!-- Right Column: Deadlines + Needs Attention -->
+        <div class="px-right-col">
 
             <!-- Upcoming Deadlines -->
-            <div class="card p-5">
-                <div class="flex items-center justify-between mb-3">
-                    <h3 class="text-sm font-semibold text-gray-800">Upcoming Deadlines</h3>
-                    <span class="material-symbols-outlined text-amber-500">schedule</span>
+            <div class="px-card px-deadlines-card">
+                <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;">
+                    <div>
+                        <h2 class="px-section-title">Upcoming Deadlines</h2>
+                        <p class="px-section-sub" style="margin-top:2px;">Next tasks due soonest.</p>
+                    </div>
+                    <span class="material-symbols-outlined" style="font-size:22px; color:#B45309;">event_upcoming</span>
                 </div>
-                <div id="upcomingDeadlinesContainer" class="flex flex-col gap-2">
-                    <!-- Dynamic -->
+                <div id="upcomingDeadlinesContainer">
+                    <!-- Dynamic content from manager.js -->
                 </div>
             </div>
 
-            <!-- Needs Attention -->
-            <div class="card p-5" style="border-color:#ffdad6;">
-                <div class="flex items-center gap-1.5 mb-3">
-                    <span class="material-symbols-outlined" style="color:#ba1a1a;">error</span>
-                    <h3 class="text-sm font-semibold" style="color:#ba1a1a;">Needs Attention</h3>
+            <!-- Needs Attention — Past Due Alert -->
+            <div class="px-card px-attention-card" id="attentionCard">
+                <div class="px-attention-header">
+                    <span class="material-symbols-outlined">error_outline</span>
+                    <h2 class="px-attention-title">Needs Attention</h2>
                 </div>
                 <div id="pastDueContainer">
-                    <!-- Dynamic -->
+                    <!-- Dynamic content from manager.js -->
                 </div>
             </div>
+
         </div>
     </div>
+
 </main>
 
-<!-- Add Employee Modal -->
-<div id="addEmployeeModal" class="modal-backdrop hidden">
-    <div class="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl mx-4">
-        <h2 class="text-base font-bold text-gray-800 mb-4">Add New Employee</h2>
-        <form id="addEmployeeForm" class="flex flex-col gap-3">
-            <div>
-                <label for="empName" class="text-[11.5px] font-medium text-gray-600 mb-1 block">Full Name</label>
-                <input type="text" id="empName" class="form-input" placeholder="e.g. Rahul Sharma" required>
+<!-- ============================================================
+     ADD EMPLOYEE MODAL
+     ============================================================ -->
+<div id="addEmployeeModal" class="px-modal-backdrop hidden">
+    <div class="px-modal-card">
+        <h2 class="px-modal-title">Add New Employee</h2>
+
+        <form id="addEmployeeForm">
+
+            <div class="px-modal-field">
+                <label for="empName" class="px-label">Full Name</label>
+                <input type="text" id="empName" class="px-input" placeholder="e.g. Rahul Sharma" required/>
             </div>
-            <div>
-                <label for="empEmail" class="text-[11.5px] font-medium text-gray-600 mb-1 block">Gmail Address</label>
-                <input type="email" id="empEmail" class="form-input" placeholder="e.g. rahulsharma@gmail.com" required>
+
+            <div class="px-modal-field">
+                <label for="empEmail" class="px-label">Gmail Address</label>
+                <input type="email" id="empEmail" class="px-input" placeholder="e.g. rahul@gmail.com" required/>
             </div>
-            <div>
-                <label for="empDept" class="text-[11.5px] font-medium text-gray-600 mb-1 block">Department</label>
-                <input type="text" id="empDept" class="form-input" placeholder="e.g. Engineering" required>
+
+            <div class="px-modal-field">
+                <label for="empDept" class="px-label">Department</label>
+                <input type="text" id="empDept" class="px-input" placeholder="e.g. Engineering" required/>
             </div>
-            <div id="addEmpFeedback" class="text-[12px] font-medium mt-1 hidden"></div>
-            <div class="flex justify-end gap-2 mt-2">
-                <button type="button" id="cancelAddEmployeeBtn" class="btn-outline text-xs py-2 px-4">Cancel</button>
-                <button type="submit" class="btn-primary text-xs py-2 px-5">Add Employee</button>
+
+            <div id="addEmpFeedback" class="px-modal-feedback"></div>
+
+            <div class="px-modal-actions">
+                <button type="button" id="cancelAddEmployeeBtn" class="px-btn-cancel">Cancel</button>
+                <button type="submit" class="px-btn-assign" style="padding: 9px 20px; font-size:13px;">
+                    Add Employee
+                </button>
             </div>
+
         </form>
     </div>
 </div>
 
+<!-- manager.js — all logic, IDs, and data fetching untouched -->
 <script src="js/manager.js"></script>
+
+<script>
+    /* ============================================================
+       UI ENHANCEMENTS — micro-interactions that complement manager.js
+       ============================================================ */
+
+    // Animate KPI numbers when they update
+    const kpiIds = ['kpiTotalTasks','kpiActiveTasks','kpiUpcomingDeadlines','kpiPastDueTasks','kpiCompletedTasks'];
+    const kpiObserver = new MutationObserver(mutations => {
+        mutations.forEach(m => {
+            const el = m.target;
+            if (el.textContent !== '—') {
+                el.classList.remove('loaded');
+                void el.offsetWidth; // reflow
+                el.classList.add('loaded');
+            }
+        });
+    });
+    kpiIds.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) kpiObserver.observe(el, { childList: true, subtree: true, characterData: true });
+    });
+
+    // Animate progress bars after DOM injection by manager.js
+    function animateProgressBars() {
+        document.querySelectorAll('.px-progress-fill[data-width]').forEach(bar => {
+            const target = bar.getAttribute('data-width');
+            setTimeout(() => { bar.style.width = target; }, 100);
+        });
+    }
+
+    // Intercept manager.js DOM insertions to apply progress bar animation
+    const teamContainer = document.getElementById('teamPerformanceContainer');
+    if (teamContainer) {
+        new MutationObserver(() => {
+            animateProgressBars();
+        }).observe(teamContainer, { childList: true, subtree: true });
+    }
+
+    // feedbackMessage compatibility bridge
+    // manager.js uses classList.add/remove for Tailwind classes; map them to our classes
+    const feedbackEl = document.getElementById('feedbackMessage');
+    if (feedbackEl) {
+        const origAdd = feedbackEl.classList.add.bind(feedbackEl.classList);
+        const origRemove = feedbackEl.classList.remove.bind(feedbackEl.classList);
+
+        feedbackEl.classList.add = function(...classes) {
+            origAdd(...classes);
+            if (classes.includes('block')) { this.classList.add('show'); }
+            if (classes.some(c => c.includes('bg-soft-mint') || c.includes('text-primary-container'))) {
+                this.classList.add('success');
+                this.classList.remove('error');
+            }
+            if (classes.some(c => c.includes('bg-error') || c.includes('text-error'))) {
+                this.classList.add('error');
+                this.classList.remove('success');
+            }
+        };
+        feedbackEl.classList.remove = function(...classes) {
+            origRemove(...classes);
+            if (classes.includes('hidden')) { /* keep show state */ }
+        };
+    }
+
+    // addEmpFeedback bridge
+    const addEmpFeedbackEl = document.getElementById('addEmpFeedback');
+    if (addEmpFeedbackEl) {
+        const origAdd2 = addEmpFeedbackEl.classList.add.bind(addEmpFeedbackEl.classList);
+        addEmpFeedbackEl.classList.add = function(...classes) {
+            origAdd2(...classes);
+            this.classList.add('show');
+            if (classes.some(c => c.includes('primary-container') || c.includes('teal') || c.includes('success'))) {
+                this.classList.add('success');
+                this.classList.remove('error');
+            } else {
+                this.classList.add('error');
+                this.classList.remove('success');
+            }
+        };
+    }
+
+    // Close modal on backdrop click
+    const modal = document.getElementById('addEmployeeModal');
+    if (modal) {
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) {
+                modal.classList.add('hidden');
+            }
+        });
+    }
+
+    // Keyboard shortcut: ESC closes modal
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && modal && !modal.classList.contains('hidden')) {
+            modal.classList.add('hidden');
+        }
+    });
+</script>
+
 </body>
 </html>

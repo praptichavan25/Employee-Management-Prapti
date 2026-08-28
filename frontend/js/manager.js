@@ -127,31 +127,31 @@ function hydrateDashboard() {
         return { name: emp.name, total, completed, active, pastDue, assigned, rate };
     });
 
+    const avPalette = ['av-teal','av-blue','av-amber','av-rose','av-violet','av-lime'];
+
     empStats.forEach(stat => {
         const initials = stat.name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
         
-        // Pick dynamic avatar color background class
-        const bgColors = ['bg-soft-lavender', 'bg-soft-mint', 'bg-pale-peach', 'bg-powder-blue', 'bg-pale-yellow'];
-        const randomColor = bgColors[Math.abs(stat.name.hashCode()) % bgColors.length];
+        // Pick avatar color from palette based on name hash
+        const avColor = avPalette[Math.abs(stat.name.hashCode()) % avPalette.length];
 
         const rowHTML = `
-            <div class="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-white/40 rounded-xl hover:bg-white/60 transition-colors gap-4">
-                <div class="flex items-center gap-4">
-                    <div class="w-10 h-10 rounded-full ${randomColor} flex items-center justify-center text-primary-container font-headline-card font-bold">${initials}</div>
-                    <div>
-                        <h4 class="font-headline-card text-headline-card text-on-surface font-semibold">${stat.name}</h4>
-                        <div class="flex flex-wrap gap-2 mt-1 font-label-sm text-label-sm text-tertiary">
-                            <span>${stat.total} Total</span> • 
-                            <span>${stat.completed} Completed</span> • 
-                            <span>${stat.active} Active</span>${stat.pastDue > 0 ? ` • <span class="text-error font-medium">${stat.pastDue} Past Due</span>` : ''}
-                        </div>
+            <div class="px-emp-row">
+                <div class="px-emp-avatar ${avColor}">${initials}</div>
+                <div class="px-emp-info">
+                    <div class="px-emp-name">${stat.name}</div>
+                    <div class="px-emp-chips">
+                        <span class="px-chip px-chip-total">${stat.total} Total</span>
+                        <span class="px-chip px-chip-done">✓ ${stat.completed} Done</span>
+                        <span class="px-chip px-chip-active">◷ ${stat.active} Active</span>
+                        ${stat.pastDue > 0 ? `<span class="px-chip px-chip-due">⚠ ${stat.pastDue} Past Due</span>` : ''}
                     </div>
                 </div>
-                <div class="w-full sm:w-48 flex items-center gap-3">
-                    <div class="flex-1 h-2 bg-surface-container rounded-full overflow-hidden">
-                        <div class="h-full bg-deep-teal rounded-full" style="width: ${stat.rate}%;"></div>
+                <div class="px-emp-progress-wrap">
+                    <div class="px-progress-bar">
+                        <div class="px-progress-fill" data-width="${stat.rate}%" style="width:0%;"></div>
                     </div>
-                    <span class="font-label-md text-label-md text-deep-teal w-8 font-semibold">${stat.rate}%</span>
+                    <span class="px-emp-pct">${stat.rate}%</span>
                 </div>
             </div>
         `;
@@ -169,11 +169,11 @@ function hydrateDashboard() {
         const completedRatio = stat.total > 0 ? Math.round((stat.completed / stat.total) * 100) : 0;
         
         const barHTML = `
-            <div class="flex flex-col items-center gap-2 group cursor-pointer w-16">
-                <div class="w-8 bg-powder-blue rounded-t-md relative transition-all group-hover:opacity-85" style="height: ${totalHeight}%; min-height: 20px;">
-                    <div class="absolute bottom-0 w-full bg-deep-teal rounded-t-md" style="height: ${completedRatio}%;"></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer;flex:1;max-width:64px;min-width:36px;" title="${stat.name}: ${stat.total} tasks, ${stat.completed} completed">
+                <div style="width:26px;background:#BFDBFE;border-radius:6px 6px 0 0;position:relative;height:${totalHeight}%;min-height:18px;transition:opacity 0.15s;" onmouseenter="this.style.opacity='.75'" onmouseleave="this.style.opacity='1'">
+                    <div style="position:absolute;bottom:0;width:100%;background:#1F5F5B;border-radius:6px 6px 0 0;height:${completedRatio}%;"></div>
                 </div>
-                <span class="font-label-sm text-label-sm text-tertiary truncate w-full text-center" title="${stat.name}">${stat.name.split(' ')[0]}</span>
+                <span style="font-size:10px;color:#7A8C8B;font-family:'Poppins',sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:56px;text-align:center;" title="${stat.name}">${stat.name.split(' ')[0]}</span>
             </div>
         `;
         barChartContainer.insertAdjacentHTML('beforeend', barHTML);
@@ -199,10 +199,10 @@ function hydrateDashboard() {
     }
     
     document.getElementById('donutPercentText').textContent = `${donePercent}%`;
-    document.getElementById('donutDoneLegend').textContent = `Done ${donePercent}%`;
-    document.getElementById('donutAssignedLegend').textContent = `Assigned ${assignedPercent}%`;
-    document.getElementById('donutProgressLegend').textContent = `In Prog ${progressPercent}%`;
-    document.getElementById('donutPastDueLegend').textContent = `Past Due ${pastDuePercent}%`;
+    document.getElementById('donutDoneLegend').textContent = completedTasks;
+    document.getElementById('donutAssignedLegend').textContent = assignedTasks;
+    document.getElementById('donutProgressLegend').textContent = progressTasks;
+    document.getElementById('donutPastDueLegend').textContent = pastDueTasks;
 
     // 5. Hydrate Upcoming Deadlines Container
     const upcomingContainer = document.getElementById('upcomingDeadlinesContainer');
@@ -219,27 +219,38 @@ function hydrateDashboard() {
         .slice(0, 3);
 
     if (upcomingTasksList.length === 0) {
-        upcomingContainer.innerHTML = `<div class="text-tertiary text-center py-4">No upcoming deadlines</div>`;
+        upcomingContainer.innerHTML = `<div class="px-empty">No upcoming deadlines 🎉</div>`;
     } else {
         upcomingTasksList.forEach(item => {
             const diffMs = item.date - new Date();
+            const diffHrs = Math.floor(diffMs / (1000 * 60 * 60));
             const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-            let badgeText = `Due in ${diffDays} days`;
-            let badgeClass = 'text-secondary bg-secondary-fixed/30';
-            
-            if (diffDays === 0) {
-                badgeText = 'Due today';
-                badgeClass = 'text-error bg-error-container/30';
+            let badgeText;
+            let badgeCls = 'badge-upcoming';
+
+            if (diffDays <= 0 && diffHrs >= 0) {
+                const hrsLeft = Math.max(diffHrs, 0);
+                badgeText = hrsLeft === 0 ? 'Due now' : `Due in ${hrsLeft}h`;
+                badgeCls = 'badge-today';
             } else if (diffDays === 1) {
                 badgeText = 'Due tomorrow';
+                badgeCls = 'badge-tomorrow';
+            } else {
+                badgeText = `Due in ${diffDays} days`;
             }
 
+            const deadlineDateStr = item.date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+            const deadlineTimeStr = item.date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+
             const upcomingHTML = `
-                <div class="p-3 bg-white/60 rounded-lg border-l-4 border-secondary-fixed shadow-sm">
-                    <h4 class="font-headline-card text-headline-card text-on-surface font-semibold truncate" title="${item.task.task}">${item.task.task}</h4>
-                    <div class="flex justify-between items-center mt-2">
-                        <span class="font-label-sm text-label-sm text-tertiary">${item.task.employee_name}</span>
-                        <span class="font-label-sm text-label-sm px-2 py-0.5 rounded-md ${badgeClass}">${badgeText}</span>
+                <div class="px-deadline-item">
+                    <div class="px-deadline-icon-col">
+                        <span class="material-symbols-outlined">calendar_month</span>
+                    </div>
+                    <div class="px-deadline-body">
+                        <div class="px-deadline-title" title="${item.task.task}">${item.task.task}</div>
+                        <div class="px-deadline-meta">${item.task.employee_name} &middot; ${deadlineDateStr}, ${deadlineTimeStr}</div>
+                        <span class="px-deadline-badge ${badgeCls}">${badgeText}</span>
                     </div>
                 </div>
             `;
@@ -262,26 +273,33 @@ function hydrateDashboard() {
     if (overdueTasksList.length === 0) {
         pastDueContainer.parentElement.style.display = 'none';
     } else {
-        pastDueContainer.parentElement.style.display = 'flex';
-        const oldestOverdue = overdueTasksList[0];
-        const diffMs = new Date() - oldestOverdue.date;
-        const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-        const diffDays = Math.floor(diffHours / 24);
-        const remHours = diffHours % 24;
-        
-        let overdueTimeStr = `${diffDays} days, ${remHours} hours`;
-        if (diffDays === 0) {
-            overdueTimeStr = `${remHours} hours`;
-        }
+        pastDueContainer.parentElement.style.display = '';
+        // Show all overdue tasks as a premium stacked list
+        let overdueHTML = '';
+        overdueTasksList.forEach(item => {
+            const diffMs = new Date() - item.date;
+            const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+            const diffDays = Math.floor(diffHours / 24);
+            const remHours = diffHours % 24;
+            const overdueTimeStr = diffDays === 0 ? `${remHours} hours` : `${diffDays} days, ${remHours} hours`;
+            const escapedTask = item.task.task.replace(/'/g, "\\'");
+            const escapedEmp = item.task.employee_name.replace(/'/g, "\\'");
 
-        pastDueContainer.innerHTML = `
-            <h4 class="font-headline-card text-headline-card text-on-surface font-semibold truncate" title="${oldestOverdue.task.task}">${oldestOverdue.task.task}</h4>
-            <p class="font-body-sm text-body-sm text-tertiary mt-1">Assignee: ${oldestOverdue.task.employee_name}</p>
-            <div class="mt-3 inline-block px-3 py-1 bg-error/10 text-error font-label-md text-label-md rounded-full font-medium">
-                Overdue by ${overdueTimeStr}
-            </div>
-            <button onclick="sendReminder('${oldestOverdue.task.employee_name}', '${oldestOverdue.task.task.replace(/'/g, "\\'")}')" class="mt-4 text-primary font-label-md text-label-md hover:underline w-full text-left font-semibold">Send Reminder →</button>
-        `;
+            overdueHTML += `
+                <div class="px-overdue-item">
+                    <div class="px-overdue-task" title="${item.task.task}">${item.task.task}</div>
+                    <div class="px-overdue-assignee">Assigned to: ${item.task.employee_name}</div>
+                    <span class="px-overdue-badge">⏱ Overdue by ${overdueTimeStr}</span>
+                    <div>
+                        <button onclick="sendReminder('${escapedEmp}', '${escapedTask}')" class="px-reminder-btn">
+                            <span class="material-symbols-outlined" style="font-size:13px;">send</span>
+                            Send Reminder
+                        </button>
+                    </div>
+                </div>
+            `;
+        });
+        pastDueContainer.innerHTML = overdueHTML;
     }
 }
 
@@ -310,7 +328,7 @@ document.addEventListener('DOMContentLoaded', function () {
 if (openAddEmployeeBtn) {
     openAddEmployeeBtn.addEventListener('click', function () {
         addEmpFeedback.textContent = '';
-        addEmpFeedback.className = 'text-sm font-medium mt-2';
+        addEmpFeedback.className = 'px-modal-feedback';
         addEmployeeForm.reset();
         addEmployeeModal.classList.remove('hidden');
     });
@@ -332,11 +350,11 @@ if (addEmployeeForm) {
         const department = document.getElementById('empDept').value.trim();
 
         addEmpFeedback.textContent = '';
-        addEmpFeedback.className = 'text-sm font-medium mt-2';
+        addEmpFeedback.className = 'px-modal-feedback';
 
         if (!name || !email || !department) {
             addEmpFeedback.textContent = 'Please enter the employee name, Gmail, and department.';
-            addEmpFeedback.classList.add('text-error');
+            addEmpFeedback.className = 'px-modal-feedback show error';
             return;
         }
 
@@ -357,7 +375,7 @@ if (addEmployeeForm) {
 
             if (response.ok && data.success) {
                 addEmpFeedback.textContent = 'Employee added successfully.';
-                addEmpFeedback.classList.add('text-primary-container');
+                addEmpFeedback.className = 'px-modal-feedback show success';
 
                 // Refresh dropdown immediately and select the new employee
                 await fetchEmployees(name);
@@ -365,16 +383,16 @@ if (addEmployeeForm) {
                 setTimeout(function () {
                     addEmployeeModal.classList.add('hidden');
                     addEmployeeForm.reset();
+                    addEmpFeedback.className = 'px-modal-feedback';
                     addEmpFeedback.textContent = '';
-                    addEmpFeedback.className = 'text-sm font-medium mt-2';
                 }, 1500);
             } else {
                 addEmpFeedback.textContent = data.message || 'Failed to add employee.';
-                addEmpFeedback.classList.add('text-error');
+                addEmpFeedback.className = 'px-modal-feedback show error';
             }
         } catch (error) {
             addEmpFeedback.textContent = 'Unable to connect to the PHOENIX server. Please make sure the backend is running.';
-            addEmpFeedback.classList.add('text-error');
+            addEmpFeedback.className = 'px-modal-feedback show error';
         }
     });
 }
@@ -392,13 +410,12 @@ document.getElementById('taskForm').addEventListener('submit', async function (e
 
     // Clear previous feedback
     feedbackMessage.textContent = '';
-    feedbackMessage.className = 'hidden text-sm font-medium mt-2 py-2 px-3 rounded-lg';
+    feedbackMessage.className = 'px-feedback';
 
     // Validate all fields
     if (!employee || !task || !deadlineDate || !deadlineTime) {
         feedbackMessage.textContent = 'Please fill in all fields.';
-        feedbackMessage.classList.add('block', 'bg-error-container/30', 'text-error');
-        feedbackMessage.classList.remove('hidden');
+        feedbackMessage.className = 'px-feedback show error';
         return;
     }
 
@@ -441,8 +458,7 @@ document.getElementById('taskForm').addEventListener('submit', async function (e
 
         if (response.ok && data.success) {
             feedbackMessage.textContent = `✓ Task assigned successfully! Email sent to ${employee}.`;
-            feedbackMessage.classList.add('block', 'bg-soft-mint', 'text-primary-container');
-            feedbackMessage.classList.remove('hidden');
+            feedbackMessage.className = 'px-feedback show success';
 
             // Refresh KPIs & List
             await loadAllTasks();
@@ -450,22 +466,20 @@ document.getElementById('taskForm').addEventListener('submit', async function (e
             // Reset form after delay
             setTimeout(function () {
                 document.getElementById('taskForm').reset();
+                feedbackMessage.className = 'px-feedback';
                 feedbackMessage.textContent = '';
-                feedbackMessage.className = 'hidden text-sm font-medium mt-2 py-2 px-3 rounded-lg';
             }, 4000);
         } else {
             feedbackMessage.textContent = data.message || 'Failed to assign task.';
-            feedbackMessage.classList.add('block', 'bg-error-container/30', 'text-error');
-            feedbackMessage.classList.remove('hidden');
+            feedbackMessage.className = 'px-feedback show error';
         }
     } catch (error) {
         feedbackMessage.textContent = 'Unable to connect to the PHOENIX server. Please make sure the backend is running.';
-        feedbackMessage.classList.add('block', 'bg-error-container/30', 'text-error');
-        feedbackMessage.classList.remove('hidden');
+        feedbackMessage.className = 'px-feedback show error';
     } finally {
         if (submitBtn) {
             submitBtn.disabled = false;
-            submitBtn.innerHTML = 'Assign Task <span class="material-symbols-outlined text-[20px]">arrow_forward</span>';
+            submitBtn.innerHTML = 'Assign Task <span class="material-symbols-outlined" style="font-size:17px;">arrow_forward</span>';
         }
     }
 });

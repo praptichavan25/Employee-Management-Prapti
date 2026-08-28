@@ -147,7 +147,7 @@ function formatExactDeadline(dateObj) {
     const month = dateObj.toLocaleString('en-US', { month: 'short' });
     const year = dateObj.getFullYear();
     const timeStr = dateObj.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-    
+
     // e.g. "20 Aug 2026 · 5:30 PM"
     return `${day} ${month} ${year} · ${timeStr}`;
 }
@@ -159,7 +159,7 @@ function getRelativeDeadlineText(dateObj) {
     const diffMs = dateObj.getTime() - now.getTime();
     const isPast = diffMs < 0;
     const absMs = Math.abs(diffMs);
-    
+
     const mins = Math.floor(absMs / 60000);
     const hours = Math.floor(mins / 60);
     const days = Math.floor(hours / 24);
@@ -174,7 +174,7 @@ function getRelativeDeadlineText(dateObj) {
             const timeStr = dateObj.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
             return `Due today · ${timeStr}`;
         }
-        
+
         // Due tomorrow?
         const tomorrow = new Date(now);
         tomorrow.setDate(tomorrow.getDate() + 1);
@@ -186,7 +186,7 @@ function getRelativeDeadlineText(dateObj) {
         if (days < 7) {
             return `Due in ${days} day${days !== 1 ? 's' : ''}`;
         }
-        
+
         return formatExactDeadline(dateObj);
     }
 }
@@ -235,7 +235,7 @@ async function loadTasks(employeeName) {
             renderPastDueTasks(allEmployeeTasks);
             renderUpcomingDeadlines(allEmployeeTasks);
             updateKPICounters(allEmployeeTasks);
-            
+
             // Also load meetings for the employee
             loadMeetings(employeeName);
         } else {
@@ -264,7 +264,7 @@ async function loadMeetings(employeeName) {
     try {
         const response = await fetch(`http://127.0.0.1:5001/meetings/${encodeURIComponent(employeeName)}`);
         const data = await response.json();
-        
+
         if (response.ok && data.success) {
             renderMeeting(data.meetings || []);
         }
@@ -309,7 +309,7 @@ function renderMeeting(meetings) {
         statusBadge.style.display = 'none';
         detailsBox.style.display = 'none';
         addCalEl.style.display = 'none';
-        
+
         joinBtn.style.pointerEvents = 'none';
         joinBtn.style.opacity = '0.5';
         joinBtn.textContent = 'Join Now';
@@ -325,26 +325,26 @@ function renderMeeting(meetings) {
     const end = new Date(nearest.end_time.replace(' ', 'T'));
 
     titleEl.textContent = nearest.title;
-    
+
     // Set details
     const dateOpts = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
     if (dateEl) dateEl.textContent = start.toLocaleDateString('en-US', dateOpts);
-    
-    timeEl.textContent = start.toLocaleTimeString('en-US', {hour: 'numeric', minute:'2-digit'}) + ' - ' + end.toLocaleTimeString('en-US', {hour: 'numeric', minute:'2-digit'});
-    
+
+    timeEl.textContent = start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) + ' - ' + end.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+
     const diffMins = Math.round((end - start) / 60000);
-    durEl.textContent = diffMins >= 60 ? `${(diffMins/60).toFixed(1)} hrs` : `${diffMins} mins`;
-    
+    durEl.textContent = diffMins >= 60 ? `${(diffMins / 60).toFixed(1)} hrs` : `${diffMins} mins`;
+
     hostEl.textContent = nearest.host;
     partEl.textContent = nearest.participants_count + (nearest.participants_count === 1 ? ' Participant' : ' Participants');
-    
+
     if (nearest.description) {
         descEl.textContent = nearest.description;
         descEl.style.display = 'block';
     } else {
         descEl.style.display = 'none';
     }
-    
+
     detailsBox.style.display = 'flex';
 
     // Setup Add to Calendar
@@ -361,7 +361,7 @@ function renderMeeting(meetings) {
     // Countdown and Status Loop
     const updateStatus = () => {
         const curr = new Date();
-        
+
         if (curr >= start && curr <= end) {
             // Live
             subEl.textContent = 'Meeting is currently in progress';
@@ -369,7 +369,7 @@ function renderMeeting(meetings) {
             statusBadge.style.backgroundColor = '#d1fae5';
             statusBadge.style.color = '#065f46';
             statusBadge.style.display = 'inline-block';
-            
+
             if (nearest.link) {
                 joinBtn.style.pointerEvents = 'auto';
                 joinBtn.style.opacity = '1';
@@ -385,18 +385,18 @@ function renderMeeting(meetings) {
             statusBadge.style.display = 'none';
             joinBtn.style.pointerEvents = 'none';
             joinBtn.style.opacity = '0.5';
-            
+
             // Reset button styles
             joinBtn.style.backgroundColor = '';
             joinBtn.style.color = '';
             joinBtn.style.boxShadow = '';
             joinBtn.style.border = '';
-            
+
             const diff = start - curr;
             const m = Math.floor(diff / 60000);
             const h = Math.floor(m / 60);
             const d = Math.floor(h / 24);
-            
+
             if (d > 1) {
                 subEl.textContent = `Starts in ${d} days`;
             } else if (d === 1) {
@@ -414,7 +414,7 @@ function renderMeeting(meetings) {
             statusBadge.style.display = 'none';
             joinBtn.style.pointerEvents = 'none';
             joinBtn.style.opacity = '0.5';
-            
+
             // Reset button styles
             joinBtn.style.backgroundColor = '';
             joinBtn.style.color = '';
@@ -431,10 +431,10 @@ function renderMeeting(meetings) {
 function generateICS(meeting) {
     const start = new Date(meeting.start_time.replace(' ', 'T'));
     const end = new Date(meeting.end_time.replace(' ', 'T'));
-    
+
     // Format to YYYYMMDDTHHMMSSZ (UTC)
     const fmt = (d) => d.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
-    
+
     const icsContent = [
         "BEGIN:VCALENDAR",
         "VERSION:2.0",
@@ -447,7 +447,7 @@ function generateICS(meeting) {
         "END:VEVENT",
         "END:VCALENDAR"
     ].join("\n");
-    
+
     return "data:text/calendar;charset=utf8," + encodeURIComponent(icsContent);
 }
 
@@ -465,8 +465,8 @@ function isTaskDueToday(task) {
 
     const now = new Date();
     return deadlineDate.getFullYear() === now.getFullYear() &&
-           deadlineDate.getMonth() === now.getMonth() &&
-           deadlineDate.getDate() === now.getDate();
+        deadlineDate.getMonth() === now.getMonth() &&
+        deadlineDate.getDate() === now.getDate();
 }
 
 // Check if a task is upcoming in the future (not completed and not overdue)
@@ -503,7 +503,7 @@ function setTaskFilter(filterName) {
 // Handle real-time search typing
 function handleTaskSearch(event) {
     currentSearchQuery = (event.target.value || '').trim().toLowerCase();
-    
+
     const clearBtn = document.getElementById('clearSearchBtn');
     if (clearBtn) {
         clearBtn.style.display = currentSearchQuery.length > 0 ? 'flex' : 'none';
@@ -611,9 +611,9 @@ function applyTaskFilterAndSearch() {
             const deadline = (t.deadline || '').toLowerCase();
             const status = (t.status || '').toLowerCase();
             return title.includes(currentSearchQuery) ||
-                   manager.includes(currentSearchQuery) ||
-                   deadline.includes(currentSearchQuery) ||
-                   status.includes(currentSearchQuery);
+                manager.includes(currentSearchQuery) ||
+                deadline.includes(currentSearchQuery) ||
+                status.includes(currentSearchQuery);
         });
     }
 
@@ -650,7 +650,7 @@ function requestStatusChange(taskId, newStatus, prevStatus) {
     if (newStatus === 'Completed' && prevStatus !== 'Completed') {
         const task = allEmployeeTasks.find(t => t.id === taskId);
         pendingStatusChange = { taskId, newStatus, prevStatus };
-        
+
         const modal = document.getElementById('completeConfirmModal');
         const desc = document.getElementById('confirmTaskTitle');
         if (desc && task) {
@@ -698,7 +698,7 @@ async function applyTaskStatusUpdate(taskId, newStatus, prevStatus) {
             const u = JSON.parse(stored);
             if (u && u.name) loggedInName = u.name;
         }
-    } catch (e) {}
+    } catch (e) { }
 
     try {
         const response = await fetch(`http://127.0.0.1:5001/tasks/${taskId}/status`, {
@@ -888,7 +888,7 @@ function renderPastDueTasks(tasks) {
     overdueTasks.forEach((task) => {
         const assignedBy = task.assigned_by || 'Prapti Chavan';
         const deadlineDate = parseDeadlineDate(task.deadline);
-        
+
         let deadlineFormatted = task.deadline || 'Past Due';
         let daysOverdueText = 'Overdue';
 
@@ -1004,7 +1004,7 @@ function updateKPICounters(tasks) {
 
     // 1. Active: Not completed
     const totalActive = tasks.filter(t => (t.status || '').toLowerCase() !== 'completed').length;
-    
+
     // 2. Past Due: Overdue + Not completed
     const totalPastDue = tasks.filter(t => isTaskOverdue(t)).length;
 
@@ -1059,7 +1059,7 @@ function populateEmployeeProfile(name) {
             if (user.department) department = user.department;
             if (user.email) userEmail = user.email;
         }
-    } catch (e) {}
+    } catch (e) { }
 
     const empDeptDisplay = document.getElementById('empDeptDisplay');
     const empEmailDisplay = document.getElementById('empEmailDisplay');
@@ -1118,7 +1118,7 @@ function escapeHtml(text) {
 }
 
 // Initial load on page ready
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     initWorkspaceDate();
     let employeeName = 'Sanjana Chavan';
     try {
