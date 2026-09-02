@@ -65,16 +65,167 @@
 
         body {
             font-family: 'Poppins', sans-serif;
-            background-color: var(--phoenix-ivory);
-            background-image: 
-                radial-gradient(at 0% 0%, rgba(91, 110, 225, 0.07) 0px, transparent 50%),
-                radial-gradient(at 50% 0%, rgba(31, 95, 91, 0.05) 0px, transparent 50%),
-                radial-gradient(at 100% 0%, rgba(139, 124, 246, 0.07) 0px, transparent 50%),
-                radial-gradient(at 80% 100%, rgba(62, 155, 122, 0.04) 0px, transparent 50%);
-            background-attachment: fixed;
+            background-color: #F6F7F5;
+            background-image: none;
             color: #1F2937;
             min-height: 100vh;
         }
+
+        /* =====================================================
+           AI EMAIL ASSISTANT
+           ===================================================== */
+
+        /* --- Divider between task form and AI panel --- */
+        .px-ai-divider {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 16px 0 6px 0;
+        }
+        .px-ai-divider-line {
+            flex: 1;
+            height: 1px;
+            background: rgba(0, 0, 0, 0.07);
+        }
+        .px-ai-divider-label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 10.5px;
+            font-weight: 650;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--phoenix-teal);
+            background: rgba(31, 95, 91, 0.06);
+            border: 1px solid rgba(31, 95, 91, 0.14);
+            border-radius: 999px;
+            padding: 3px 10px 3px 7px;
+            white-space: nowrap;
+        }
+        .px-ai-divider-label .material-symbols-outlined { font-size: 13px; color: #C5A880; }
+
+        .px-ai-desc-text {
+            font-size: 11.5px;
+            color: var(--phoenix-muted);
+            text-align: center;
+            margin-bottom: 2px;
+        }
+
+        /* --- Generate Email button --- */
+        .px-btn-ai-generate {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            width: 100%;
+            padding: 10px 18px;
+            margin-top: 8px;
+            background: #1F5F5B;
+            color: #ffffff;
+            font-family: 'Poppins', sans-serif;
+            font-size: 12.5px;
+            font-weight: 600;
+            border: 1px solid #1F5F5B;
+            border-radius: 12px;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(31, 95, 91, 0.16);
+            transition: all 0.18s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        .px-btn-ai-generate:hover:not(:disabled) {
+            background: #174744;
+            border-color: #174744;
+            box-shadow: 0 4px 12px rgba(31, 95, 91, 0.24);
+            transform: translateY(-1px);
+        }
+        .px-btn-ai-generate:active:not(:disabled) { transform: translateY(0); }
+        .px-btn-ai-generate:disabled { opacity: 0.65; cursor: not-allowed; transform: none; }
+        .px-btn-ai-generate .material-symbols-outlined { font-size: 16px; color: #E8D5B5; }
+
+        @keyframes ai-shimmer {
+            0%   { opacity: 0.8; }
+            50%  { opacity: 1; }
+            100% { opacity: 0.8; }
+        }
+        .px-btn-ai-generate.loading {
+            background: #174744;
+            animation: ai-shimmer 1.2s ease-in-out infinite;
+        }
+
+        /* --- AI Panel (hidden until generation) --- */
+        .px-ai-panel { 
+            margin-top: 14px; 
+            border: 1px solid rgba(31, 95, 91, 0.18); 
+            border-radius: 12px; 
+            background: #FFFFFF; 
+            overflow: hidden; 
+            display: none; 
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+        }
+        .px-ai-panel.visible { display: block; }
+
+        .px-ai-panel-header { 
+            display: flex; 
+            align-items: center; 
+            justify-content: space-between; 
+            padding: 9px 13px; 
+            background: #F8F9FA; 
+            border-bottom: 1px solid rgba(0, 0, 0, 0.06); 
+        }
+        .px-ai-panel-title { 
+            display: flex; 
+            align-items: center; 
+            gap: 6px; 
+            font-size: 11px; 
+            font-weight: 650; 
+            text-transform: uppercase; 
+            letter-spacing: 0.06em; 
+            color: var(--phoenix-teal); 
+        }
+        .px-ai-panel-title .material-symbols-outlined { font-size: 14px; color: var(--phoenix-teal); }
+        .px-ai-panel-badge { 
+            font-size: 9.5px; 
+            font-weight: 600; 
+            color: var(--phoenix-teal); 
+            background: rgba(31, 95, 91, 0.08); 
+            border: 1px solid rgba(31, 95, 91, 0.18); 
+            border-radius: 999px; 
+            padding: 2px 8px; 
+            text-transform: uppercase; 
+            letter-spacing: 0.05em; 
+        }
+
+        .px-ai-email-body { padding: 13px 15px; display: flex; flex-direction: column; gap: 10px; }
+
+        .px-ai-subject-row { display: flex; align-items: center; gap: 8px; }
+        .px-ai-field-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--phoenix-muted); white-space: nowrap; min-width: 64px; }
+        .px-ai-subject-input { flex: 1; font-family: 'Poppins', sans-serif; font-size: 12px; font-weight: 500; color: var(--phoenix-navy); background: #F8F9FA; border: 1px solid rgba(0, 0, 0, 0.08); border-radius: 8px; padding: 6px 10px; outline: none; transition: border-color 0.18s; }
+        .px-ai-subject-input:focus { border-color: var(--phoenix-teal); background: #fff; }
+
+        .px-ai-body-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--phoenix-muted); margin-bottom: -4px; }
+        .px-ai-body-textarea { width: 100%; font-family: 'Poppins', sans-serif; font-size: 12px; line-height: 1.65; color: var(--phoenix-navy); background: #F8F9FA; border: 1px solid rgba(0, 0, 0, 0.08); border-radius: 8px; padding: 10px 12px; resize: vertical; outline: none; transition: border-color 0.18s; min-height: 180px; }
+        .px-ai-body-textarea:focus { border-color: var(--phoenix-teal); background: #fff; }
+
+        .px-ai-actions { display: flex; align-items: center; gap: 8px; padding: 10px 15px 12px; border-top: 1px solid rgba(0, 0, 0, 0.06); flex-wrap: wrap; }
+        .px-btn-ai-copy { display: flex; align-items: center; gap: 5px; font-family: 'Poppins', sans-serif; font-size: 11.5px; font-weight: 600; color: var(--phoenix-teal); background: #F4F6F5; border: 1px solid rgba(31, 95, 91, 0.18); border-radius: 8px; padding: 6px 12px; cursor: pointer; transition: all 0.18s ease; }
+        .px-btn-ai-copy:hover { background: rgba(31, 95, 91, 0.08); border-color: var(--phoenix-teal); }
+        .px-btn-ai-copy .material-symbols-outlined { font-size: 13px; }
+
+        .px-btn-ai-send { display: flex; align-items: center; gap: 6px; font-family: 'Poppins', sans-serif; font-size: 12px; font-weight: 600; color: #fff; background: #1F5F5B; border: 1px solid #1F5F5B; border-radius: 8px; padding: 6px 15px; cursor: pointer; box-shadow: 0 2px 6px rgba(31, 95, 91, 0.18); transition: all 0.18s ease; margin-left: auto; }
+        .px-btn-ai-send:hover:not(:disabled) { background: #174744; border-color: #174744; box-shadow: 0 4px 10px rgba(31, 95, 91, 0.25); transform: translateY(-1px); }
+        .px-btn-ai-send:disabled { opacity: 0.65; cursor: not-allowed; transform: none; }
+        .px-btn-ai-send .material-symbols-outlined { font-size: 14px; }
+
+        .px-ai-send-feedback { font-size: 11px; font-weight: 500; margin-top: 4px; width: 100%; text-align: center; display: none; }
+        .px-ai-send-feedback.success { color: var(--phoenix-teal); display: block; }
+        .px-ai-send-feedback.error   { color: var(--phoenix-coral);   display: block; }
+
+        .px-ai-error { margin: 10px 15px; padding: 8px 12px; background: rgba(211, 84, 84, 0.06); border: 1px solid rgba(211, 84, 84, 0.22); border-radius: 8px; font-size: 11.5px; color: #C94A4A; display: flex; align-items: flex-start; gap: 7px; }
+        .px-ai-error .material-symbols-outlined { font-size: 14px; margin-top: 1px; flex-shrink: 0; }
+
+        .px-ai-disclaimer { font-size: 9.5px; color: var(--phoenix-muted); text-align: center; padding: 0 15px 8px; opacity: 0.8; }
+
 
         /* ---- MATERIAL ICONS ---- */
         .material-symbols-outlined {
@@ -192,19 +343,17 @@
            CARDS
            ===================================================== */
         .px-card {
-            background: var(--phoenix-card);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.45);
-            border-radius: var(--radius-card);
-            box-shadow: var(--shadow-card);
-            transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.25s ease;
+            background: #FFFFFF;
+            border: 1px solid rgba(0, 0, 0, 0.07);
+            border-radius: 18px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+            transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
         }
 
         .px-card:hover {
-            transform: translateY(-3px);
-            box-shadow: var(--shadow-hover);
-            border-color: rgba(255, 255, 255, 0.7);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.05);
+            border-color: rgba(31, 95, 91, 0.18);
         }
 
         /* =====================================================
@@ -294,16 +443,16 @@
         .kpi-total .px-kpi-num { color: var(--phoenix-teal); }
 
         .kpi-active {
-            background: linear-gradient(135deg, rgba(91, 110, 225, 0.08) 0%, rgba(139, 124, 246, 0.03) 100%);
-            border: 1px solid rgba(91, 110, 225, 0.15);
-            box-shadow: 0 4px 12px rgba(91, 110, 225, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+            background: linear-gradient(135deg, rgba(31, 95, 91, 0.06) 0%, rgba(42, 122, 116, 0.03) 100%);
+            border: 1px solid rgba(31, 95, 91, 0.15);
+            box-shadow: 0 4px 12px rgba(31, 95, 91, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.6);
         }
         .kpi-active:hover {
-            border-color: rgba(91, 110, 225, 0.3);
-            box-shadow: 0 12px 24px rgba(91, 110, 225, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+            border-color: rgba(31, 95, 91, 0.3);
+            box-shadow: 0 12px 24px rgba(31, 95, 91, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.8);
         }
-        .kpi-active .px-kpi-icon-wrap { background: rgba(91, 110, 225, 0.15); color: var(--phoenix-indigo); }
-        .kpi-active .px-kpi-num { color: var(--phoenix-indigo); }
+        .kpi-active .px-kpi-icon-wrap { background: rgba(31, 95, 91, 0.12); color: var(--phoenix-teal); }
+        .kpi-active .px-kpi-num { color: #174744; }
 
         .kpi-upcoming {
             background: linear-gradient(135deg, rgba(230, 162, 60, 0.08) 0%, rgba(230, 162, 60, 0.03) 100%);
@@ -360,38 +509,19 @@
            ASSIGN TASK FORM — COMMAND CENTER (PREMIUM REDESIGN)
            ===================================================== */
         .px-form-card {
-            padding: 24px 26px 22px;
-            background: linear-gradient(145deg, rgba(255, 255, 255, 0.88) 0%, rgba(248, 250, 252, 0.75) 100%);
-            border: 1px solid rgba(31, 95, 91, 0.14);
-            border-radius: var(--radius-card);
-            box-shadow: 
-                0 4px 20px -2px rgba(31, 95, 91, 0.05),
-                0 12px 32px -4px rgba(0, 0, 0, 0.04),
-                inset 0 1px 0 rgba(255, 255, 255, 0.95);
-            position: relative;
-            overflow: hidden;
+            padding: 22px 24px 20px;
+            background: #FFFFFF;
+            border: 1px solid rgba(0, 0, 0, 0.07);
+            border-radius: 18px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
             display: flex;
             flex-direction: column;
-            gap: 16px;
-        }
-
-        .px-form-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 3px;
-            background: linear-gradient(90deg, #1F5F5B 0%, #2A7A74 40%, #E6A23C 85%, #5B6EE1 100%);
-            opacity: 0.85;
+            gap: 15px;
         }
 
         .px-form-card:hover {
-            border-color: rgba(31, 95, 91, 0.25);
-            box-shadow: 
-                0 16px 36px -4px rgba(31, 95, 91, 0.09),
-                0 8px 16px -4px rgba(0, 0, 0, 0.03),
-                inset 0 1px 0 rgba(255, 255, 255, 0.95);
+            border-color: rgba(31, 95, 91, 0.18);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.05);
         }
 
         /* Task Card Header */
@@ -684,26 +814,25 @@
         }
 
         .px-priority-seg input[type="radio"]:checked + label {
+            background: #1F5F5B;
             color: #ffffff;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+            box-shadow: 0 1px 4px rgba(31, 95, 91, 0.25);
         }
 
         .px-priority-seg input[type="radio"]:checked + label .prio-dot {
-            background-color: #ffffff;
-            box-shadow: 0 0 6px rgba(255, 255, 255, 0.8);
-            transform: scale(1.15);
+            box-shadow: 0 0 4px rgba(255, 255, 255, 0.7);
         }
 
-        .px-priority-seg input#prio-low:checked + label    { background: linear-gradient(135deg, #3E9B7A 0%, #206E58 100%); }
-        .px-priority-seg input#prio-medium:checked + label { background: linear-gradient(135deg, #D97706 0%, #B45309 100%); }
-        .px-priority-seg input#prio-high:checked + label   { background: linear-gradient(135deg, #DC2626 0%, #991B1B 100%); }
+        .px-priority-seg input#prio-low:checked + label .prio-dot { background-color: #8CE0D3; }
+        .px-priority-seg input#prio-medium:checked + label .prio-dot { background-color: #F8D293; }
+        .px-priority-seg input#prio-high:checked + label .prio-dot { background-color: #FCA5A5; }
 
         /* Deadline Section */
         .px-deadline-section {
-            background: rgba(31, 95, 91, 0.035);
-            border: 1px dashed rgba(31, 95, 91, 0.2);
-            border-radius: 14px;
-            padding: 9px 12px 11px;
+            background: #F8F9FA;
+            border: 1px solid rgba(0, 0, 0, 0.07);
+            border-radius: 12px;
+            padding: 10px 14px 12px;
             display: flex;
             flex-direction: column;
             gap: 7px;
@@ -801,30 +930,31 @@
             align-items: center;
             justify-content: center;
             gap: 8px;
-            background: linear-gradient(135deg, #1F5F5B 0%, #174744 100%);
+            background: #1F5F5B;
             color: #ffffff;
-            border: 1px solid rgba(255, 255, 255, 0.15);
+            border: 1px solid #1F5F5B;
             border-radius: 12px;
             padding: 10px 22px;
             font-family: 'Poppins', sans-serif;
-            font-size: 12.5px;
-            font-weight: 650;
+            font-size: 13px;
+            font-weight: 600;
             cursor: pointer;
-            box-shadow: 0 4px 14px rgba(31, 95, 91, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.25);
-            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 2px 6px rgba(31, 95, 91, 0.18);
+            transition: all 0.18s ease;
             letter-spacing: 0.01em;
             white-space: nowrap;
         }
 
-        .px-btn-assign:hover {
-            background: linear-gradient(135deg, #2A7A74 0%, #1F5F5B 100%);
-            box-shadow: 0 8px 22px rgba(31, 95, 91, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.35);
-            transform: translateY(-1.5px);
+        .px-btn-assign:hover:not(:disabled) {
+            background: #174744;
+            border-color: #174744;
+            box-shadow: 0 4px 12px rgba(31, 95, 91, 0.25);
+            transform: translateY(-1px);
         }
 
-        .px-btn-assign:active {
-            transform: translateY(0.5px);
-            box-shadow: 0 2px 6px rgba(31, 95, 91, 0.25);
+        .px-btn-assign:active:not(:disabled) {
+            transform: translateY(0);
+            box-shadow: 0 2px 4px rgba(31, 95, 91, 0.18);
         }
 
         .px-btn-assign:disabled {
@@ -862,31 +992,32 @@
         .px-btn-outline .material-symbols-outlined { font-size: 16px; }
 
         /* =====================================================
-           DONUT CHART CARD
+           DONUT CHART CARD — BALANCED & REFINED
            ===================================================== */
         .px-donut-card {
-            padding: 24px 22px;
+            padding: 22px 24px 20px;
             display: flex;
             flex-direction: column;
+            justify-content: space-between;
         }
 
         .px-donut-wrap {
-            flex: 1;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            gap: 20px;
-            padding: 8px 0;
+            gap: 16px;
+            padding: 8px 0 4px;
+            flex: 1;
         }
 
         #donutChartGraphic {
             position: relative;
-            width: 160px;
-            height: 160px;
+            width: 164px;
+            height: 164px;
             border-radius: 50%;
             flex-shrink: 0;
-            box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
         }
 
         .px-donut-center {
@@ -899,60 +1030,69 @@
         }
 
         .px-donut-inner {
-            width: 110px;
-            height: 110px;
-            background: rgba(255, 255, 255, 0.9);
-            backdrop-filter: blur(10px);
+            width: 114px;
+            height: 114px;
+            background: #FFFFFF;
             border-radius: 50%;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
         }
 
         .px-donut-pct {
-            font-size: 26px;
+            font-size: 28px;
             font-weight: 800;
-            color: var(--phoenix-navy);
+            color: var(--phoenix-teal);
             line-height: 1;
             letter-spacing: -0.5px;
         }
 
         .px-donut-sub {
-            font-size: 10px;
+            font-size: 9.5px;
             color: var(--phoenix-muted);
-            font-weight: 600;
-            margin-top: 2px;
+            font-weight: 700;
+            margin-top: 3px;
             text-transform: uppercase;
-            letter-spacing: 0.05em;
+            letter-spacing: 0.08em;
         }
 
         .px-donut-legend {
             display: flex;
             flex-direction: column;
-            gap: 8px;
+            gap: 6px;
             width: 100%;
+            margin-top: 6px;
         }
 
         .px-legend-item {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            font-size: 12.5px;
+            font-size: 12px;
+            padding: 6.5px 12px;
+            background: #F8F9FA;
+            border: 1px solid rgba(0, 0, 0, 0.04);
+            border-radius: 8px;
+            transition: background 0.15s ease;
+        }
+
+        .px-legend-item:hover {
+            background: #F1F3F2;
         }
 
         .px-legend-left {
             display: flex;
             align-items: center;
             gap: 8px;
-            color: var(--phoenix-muted);
+            color: #374151;
             font-weight: 500;
         }
 
         .px-legend-dot {
-            width: 9px;
-            height: 9px;
+            width: 8px;
+            height: 8px;
             border-radius: 50%;
             flex-shrink: 0;
         }
@@ -962,131 +1102,249 @@
             color: var(--phoenix-navy);
             min-width: 24px;
             text-align: right;
+            font-size: 13px;
         }
 
         /* =====================================================
-           TEAM PERFORMANCE SECTION
+           TEAM PERFORMANCE SECTION — HORIZONTAL BAR CHART
            ===================================================== */
         .px-team-card {
-            padding: 24px 24px 20px;
+            padding: 26px 28px 22px;
         }
 
         .px-team-header {
             display: flex;
-            align-items: center;
+            align-items: flex-start;
             justify-content: space-between;
-            margin-bottom: 18px;
+            margin-bottom: 22px;
+            gap: 12px;
         }
 
         .px-team-legend {
             display: flex;
-            gap: 14px;
+            gap: 16px;
+            flex-shrink: 0;
         }
 
         .px-team-legend-item {
             display: flex;
             align-items: center;
-            gap: 5px;
+            gap: 6px;
             font-size: 11px;
             color: var(--phoenix-muted);
-            font-weight: 600;
+            font-weight: 500;
         }
 
         .px-team-legend-dot {
             width: 8px;
             height: 8px;
-            border-radius: 50%;
+            border-radius: 2px;
         }
 
-        /* Bar Chart styles */
-        .px-bar-chart {
-            display: flex;
-            align-items: flex-end;
-            gap: 10px;
-            height: 110px;
-            border-bottom: 1.5px solid rgba(0, 0, 0, 0.05);
-            border-left: 1.5px solid rgba(0, 0, 0, 0.05);
-            padding: 0 8px 0 4px;
-            margin-bottom: 24px;
-            overflow-x: auto;
-        }
-
-        .px-bar-column {
+        /* ---- Horizontal Bar Container ---- */
+        .px-hbar-chart {
             display: flex;
             flex-direction: column;
-            align-items: center;
-            gap: 8px;
-            cursor: pointer;
-            flex: 1;
-            max-width: 60px;
-            min-width: 32px;
+            gap: 10px;
+            margin-bottom: 12px;
         }
 
-        .px-bar-outer {
-            width: 28px;
-            background: rgba(91, 110, 225, 0.14); /* Soft Indigo */
-            border: 1px solid rgba(91, 110, 225, 0.22);
-            border-radius: 14px 14px 0 0;
+        /* ---- Each Employee Row Card ---- */
+        .px-hbar-item {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            padding: 12px 15px;
+            background: rgba(255, 255, 255, 0.65);
+            border: 1px solid rgba(0, 0, 0, 0.05);
+            border-radius: 14px;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
             position: relative;
-            min-height: 18px;
-            transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.2s ease, border-color 0.2s ease;
-            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4);
+            cursor: default;
         }
 
-        .px-bar-column:hover .px-bar-outer {
-            transform: scaleY(1.03);
-            background: rgba(91, 110, 225, 0.22);
-            border-color: rgba(91, 110, 225, 0.4);
+        .px-hbar-item:hover {
+            background: #ffffff;
+            border-color: rgba(31, 95, 91, 0.2);
+            box-shadow: 0 4px 16px rgba(31, 95, 91, 0.06);
+            transform: translateY(-1px);
         }
 
-        .px-bar-inner {
-            position: absolute;
-            bottom: -1px;
-            left: -1px;
-            width: calc(100% + 2px);
-            background: linear-gradient(180deg, #3E9B7A 0%, #1F5F5B 100%); /* Emerald to Teal gradient */
-            border-radius: 14px 14px 0 0;
-            transition: height 0.6s cubic-bezier(0.22, 0.61, 0.36, 1);
-            box-shadow: 0 -2px 8px rgba(62, 155, 122, 0.3);
+        .px-hbar-item-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 14px;
         }
 
-        .px-bar-label {
-            font-size: 10px;
+        .px-hbar-user-wrap {
+            display: flex;
+            align-items: center;
+            gap: 11px;
+            min-width: 0;
+            flex: 1;
+        }
+
+        .px-hbar-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: rgba(31, 95, 91, 0.08);
+            border: 1.5px solid rgba(31, 95, 91, 0.16);
+            color: var(--phoenix-teal);
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .px-hbar-user-info {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            min-width: 0;
+        }
+
+        .px-hbar-name-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .px-hbar-name {
+            font-size: 14px;
             font-weight: 650;
-            color: #4A6461;
-            font-family: 'Poppins', sans-serif;
+            color: var(--phoenix-navy);
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-            max-width: 52px;
-            text-align: center;
-            transition: color 0.2s ease;
         }
 
-        .px-bar-column:hover .px-bar-label {
-            color: var(--phoenix-navy);
+        .px-hbar-rank-pill {
+            font-size: 10px;
+            font-weight: 700;
+            color: #9A7B2C;
+            background: rgba(230, 162, 60, 0.12);
+            border: 1px solid rgba(230, 162, 60, 0.25);
+            padding: 1px 6px;
+            border-radius: 99px;
+            line-height: 1.4;
         }
 
-        /* Employee performance rows */
-        .px-emp-row {
+        .px-hbar-summary {
+            font-size: 12px;
+            color: var(--phoenix-muted);
             display: flex;
             align-items: center;
-            gap: 14px;
-            padding: 14px 16px;
-            background: rgba(255, 255, 255, 0.4);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            border-radius: 16px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            margin-bottom: 8px;
+            flex-wrap: wrap;
+            gap: 5px;
+            font-weight: 450;
         }
 
-        .px-emp-row:last-child { margin-bottom: 0; }
+        .px-hbar-sep {
+            color: rgba(0, 0, 0, 0.25);
+            font-size: 11px;
+        }
 
-        .px-emp-row:hover {
-            background: rgba(91, 110, 225, 0.08);
-            border-color: rgba(91, 110, 225, 0.2);
-            transform: translateX(4px);
+        .px-hbar-pastdue {
+            color: var(--phoenix-coral);
+            font-weight: 600;
+        }
+
+        .px-hbar-rate-wrap {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            flex-shrink: 0;
+        }
+
+        .px-hbar-rate {
+            font-size: 18px;
+            font-weight: 800;
+            color: var(--phoenix-teal);
+            letter-spacing: -0.3px;
+        }
+
+        .px-hbar-rate.zero {
+            color: #94A3B8;
+            font-weight: 600;
+            font-size: 16px;
+        }
+
+        /* Track and fill */
+        .px-hbar-track {
+            width: 100%;
+            height: 10px;
+            background: rgba(0, 0, 0, 0.05);
+            border-radius: 99px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .px-hbar-fill {
+            height: 100%;
+            border-radius: 99px;
+            background: linear-gradient(90deg, #1F5F5B 0%, #3E9B7A 100%);
+            width: 0%;
+            transition: width 0.75s cubic-bezier(0.22, 0.61, 0.36, 1);
+            position: relative;
+        }
+
+        .px-hbar-fill.pct-zero {
+            background: rgba(0, 0, 0, 0.08);
+            width: 0% !important;
+            transition: none;
+        }
+
+        .px-hbar-fill.pct-high {
+            background: linear-gradient(90deg, #1F5F5B 0%, #3E9B7A 100%);
+        }
+
+        .px-hbar-fill.pct-medium {
+            background: linear-gradient(90deg, #1F5F5B 0%, #2A7A74 100%);
+        }
+
+        .px-hbar-fill.pct-low {
+            background: linear-gradient(90deg, #2A7A74 0%, #64A39B 100%);
+        }
+
+        /* Tooltip */
+        .px-hbar-tooltip {
+            display: none;
+            position: absolute;
+            right: 16px;
+            bottom: calc(100% + 8px);
+            z-index: 50;
+            background: #1F2937;
+            color: #ffffff;
+            border-radius: 8px;
+            padding: 8px 12px;
+            font-size: 11.5px;
+            line-height: 1.5;
+            white-space: nowrap;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+            pointer-events: none;
+        }
+
+        .px-hbar-tooltip::after {
+            content: '';
+            position: absolute;
+            top: 100%;
+            right: 24px;
+            border: 5px solid transparent;
+            border-top-color: #1F2937;
+        }
+
+        .px-hbar-item:hover .px-hbar-tooltip {
+            display: block;
+        }
+
+        /* Employee performance rows — below the horizontal bar chart */
+        .px-emp-row {
+            display: none; /* Hidden — data now shown directly in the horizontal chart */
         }
 
         .px-emp-avatar {
@@ -1170,13 +1428,13 @@
             text-align: right;
         }
 
-        /* Avatar palette */
-        .av-teal   { background: linear-gradient(135deg, #C2E8E4 0%, #87D3C9 100%); color: #0D5C58; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4); }
-        .av-blue   { background: linear-gradient(135deg, #BFDBFE 0%, #93C5FD 100%); color: #1D4ED8; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4); }
-        .av-amber  { background: linear-gradient(135deg, #FDE68A 0%, #FCD34D 100%); color: #78350F; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4); }
-        .av-rose   { background: linear-gradient(135deg, #FECDD3 0%, #FDA4AF 100%); color: #9F1239; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4); }
-        .av-violet { background: linear-gradient(135deg, #DDD6FE 0%, #C4B5FD 100%); color: #5B21B6; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4); }
-        .av-lime   { background: linear-gradient(135deg, #D9F99D 0%, #BEF264 100%); color: #365314; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4); }
+        /* Avatar palette — unified neutral teal for all employees */
+        .av-teal, .av-blue, .av-amber, .av-rose, .av-violet, .av-lime {
+            background: linear-gradient(135deg, rgba(31, 95, 91, 0.1) 0%, rgba(31, 95, 91, 0.06) 100%);
+            color: var(--phoenix-teal);
+            border: 1.5px solid rgba(31, 95, 91, 0.18);
+            box-shadow: none;
+        }
 
         /* =====================================================
            RIGHT COLUMN (Deadlines + Attention)
@@ -1671,7 +1929,7 @@
             transition: background 0.15s ease;
         }
         .px-timeline-item:hover {
-            background: rgba(91, 110, 225, 0.06);
+            background: rgba(31, 95, 91, 0.05);
         }
 
         /* Vertical connector line */
@@ -1702,7 +1960,7 @@
         }
         .px-timeline-dot.node-red    { background: var(--phoenix-coral); box-shadow: 0 0 0 2px rgba(229,115,115,0.25); }
         .px-timeline-dot.node-amber  { background: var(--phoenix-amber); box-shadow: 0 0 0 2px rgba(230,162,60,0.25); }
-        .px-timeline-dot.node-indigo { background: var(--phoenix-indigo); box-shadow: 0 0 0 2px rgba(91,110,225,0.25); }
+        .px-timeline-dot.node-indigo { background: #2A7A74; box-shadow: 0 0 0 2px rgba(42,122,116,0.25); }
         .px-timeline-dot.node-teal   { background: var(--phoenix-teal); box-shadow: 0 0 0 2px rgba(31,95,91,0.25); }
 
         .px-timeline-body { flex: 1; min-width: 0; }
@@ -1731,7 +1989,7 @@
         }
         .px-timeline-countdown.urgent { color: var(--phoenix-coral); }
         .px-timeline-countdown.today  { color: var(--phoenix-amber); }
-        .px-timeline-countdown.soon   { color: var(--phoenix-indigo); }
+        .px-timeline-countdown.soon   { color: #2A7A74; }
         .px-timeline-countdown.future { color: var(--phoenix-teal); }
 
         /* =====================================================
@@ -2088,6 +2346,75 @@
                     </div>
                 </div>
 
+                <!-- AI Email Assistant Section -->
+                <div class="px-ai-divider">
+                    <div class="px-ai-divider-line"></div>
+                    <div class="px-ai-divider-label">
+                        <span class="material-symbols-outlined">auto_awesome</span>
+                        <span>AI Email Assistant</span>
+                    </div>
+                    <div class="px-ai-divider-line"></div>
+                </div>
+
+                <!-- Generate AI Email Button -->
+                <button type="button" id="generateAIEmailBtn" class="px-btn-ai-generate">
+                    <span class="material-symbols-outlined">auto_awesome</span>
+                    <span id="generateAIEmailBtnText">Generate Email with AI</span>
+                </button>
+
+                <!-- AI Email Assistant Panel (Preview & Edit) -->
+                <div id="aiEmailPanel" class="px-ai-panel">
+                    <div class="px-ai-panel-header">
+                        <div class="px-ai-panel-title">
+                            <span class="material-symbols-outlined">mail</span>
+                            <span>AI Draft Preview &amp; Editor</span>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <span class="px-ai-panel-badge">OpenAI</span>
+                            <button type="button" id="closeAIPanelBtn" style="background:none; border:none; cursor:pointer; color:var(--phoenix-muted); display:flex; align-items:center; padding:2px;" title="Collapse preview">
+                                <span class="material-symbols-outlined" style="font-size:16px;">close</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="px-ai-email-body">
+                        <div class="px-ai-subject-row">
+                            <label class="px-ai-field-label" for="aiSubjectInput">Subject:</label>
+                            <input type="text" id="aiSubjectInput" class="px-ai-subject-input" placeholder="Email Subject Line..."/>
+                        </div>
+
+                        <div>
+                            <div class="px-ai-body-label">Email Body (Editable):</div>
+                            <textarea id="aiBodyTextarea" class="px-ai-body-textarea" rows="8" placeholder="Draft will appear here..."></textarea>
+                        </div>
+                    </div>
+
+                    <div id="aiErrorBanner" class="px-ai-error" style="display:none;">
+                        <span class="material-symbols-outlined">error_outline</span>
+                        <span id="aiErrorMessage">Error generating email draft.</span>
+                    </div>
+
+                    <div class="px-ai-actions">
+                        <button type="button" id="copyAIEmailBtn" class="px-btn-ai-copy" title="Copy email text to clipboard">
+                            <span class="material-symbols-outlined">content_copy</span>
+                            <span>Copy Email</span>
+                        </button>
+                        <button type="button" id="reDraftAIBtn" class="px-btn-ai-copy" title="Regenerate draft">
+                            <span class="material-symbols-outlined">refresh</span>
+                            <span>Regenerate</span>
+                        </button>
+                        <button type="button" id="sendAIEmailBtn" class="px-btn-ai-send" title="Assign task and send this approved AI email">
+                            <span class="material-symbols-outlined">send</span>
+                            <span>Assign &amp; Send This Email</span>
+                        </button>
+                        <div id="aiSendFeedback" class="px-ai-send-feedback"></div>
+                    </div>
+
+                    <div class="px-ai-disclaimer">
+                        Review and customize the draft before sending. Dispatch uses PHOENIX Gmail SMTP.
+                    </div>
+                </div>
+
                 <!-- Feedback banner -->
                 <div id="feedbackMessage" class="px-feedback"></div>
 
@@ -2115,7 +2442,7 @@
 
             <div class="px-donut-wrap">
                 <!-- Donut -->
-                <div id="donutChartGraphic" style="background: conic-gradient(from 0deg, #3E9B7A 0% 0%, rgba(0,0,0,0.05) 0% 100%);">
+                <div id="donutChartGraphic" style="background: conic-gradient(from 0deg, #1F5F5B 0% 0%, rgba(0,0,0,0.06) 0% 100%);">
                     <div class="px-donut-center">
                         <div class="px-donut-inner">
                             <span id="donutPercentText" class="px-donut-pct">0%</span>
@@ -2128,28 +2455,28 @@
                 <div class="px-donut-legend">
                     <div class="px-legend-item">
                         <div class="px-legend-left">
-                            <div class="px-legend-dot" style="background:#3E9B7A;"></div>
+                            <div class="px-legend-dot" style="background:#1F5F5B;"></div>
                             <span>Completed</span>
                         </div>
                         <span id="donutDoneLegend" class="px-legend-count">—</span>
                     </div>
                     <div class="px-legend-item">
                         <div class="px-legend-left">
-                            <div class="px-legend-dot" style="background:#5B6EE1;"></div>
+                            <div class="px-legend-dot" style="background:#64748B;"></div>
                             <span>Assigned</span>
                         </div>
                         <span id="donutAssignedLegend" class="px-legend-count">—</span>
                     </div>
                     <div class="px-legend-item">
                         <div class="px-legend-left">
-                            <div class="px-legend-dot" style="background:#E6A23C;"></div>
+                            <div class="px-legend-dot" style="background:#D4882C;"></div>
                             <span>In Progress</span>
                         </div>
                         <span id="donutProgressLegend" class="px-legend-count">—</span>
                     </div>
                     <div class="px-legend-item">
                         <div class="px-legend-left">
-                            <div class="px-legend-dot" style="background:#E57373;"></div>
+                            <div class="px-legend-dot" style="background:#D35454;"></div>
                             <span>Past Due</span>
                         </div>
                         <span id="donutPastDueLegend" class="px-legend-count">—</span>
@@ -2170,34 +2497,32 @@
             <div class="px-team-header">
                 <div>
                     <h2 class="px-section-title">Team Performance</h2>
-                    <p class="px-section-sub" style="margin-top:2px;">Individual task completion rates &amp; activity.</p>
+                    <p class="px-section-sub" style="margin-top:3px;">Completion rate by team member, sorted by performance.</p>
                 </div>
                 <div class="px-team-legend">
                     <div class="px-team-legend-item">
-                        <div class="px-team-legend-dot" style="background:#5B6EE1;"></div>
-                        Assigned
-                    </div>
-                    <div class="px-team-legend-item">
-                        <div class="px-team-legend-dot" style="background:#3E9B7A;"></div>
+                        <div class="px-team-legend-dot" style="background:var(--phoenix-teal-mid);"></div>
                         Completed
                     </div>
+                    <div class="px-team-legend-item">
+                        <div class="px-team-legend-dot" style="background:rgba(0,0,0,0.12);"></div>
+                        Remaining
+                    </div>
                 </div>
             </div>
 
-            <!-- Bar Chart -->
-            <div class="px-bar-chart">
-                <div id="barChartContainer" style="display:flex; align-items:flex-end; justify-content:space-around; gap:10px; width:100%; height:100%;">
-                    <!-- Dynamic bars injected by manager.js -->
-                </div>
+            <!-- Horizontal Bar Chart -->
+            <div id="hbarChart" class="px-hbar-chart">
+                <!-- Populated by manager.js -->
             </div>
 
-            <!-- Employee Performance List -->
-            <div id="teamPerformanceContainer" style="margin-top:4px;">
-                <!-- Dynamic rows injected by manager.js -->
-            </div>
+            <!-- Hidden container kept for modal population (not shown on dashboard) -->
+            <div id="teamPerformanceContainer" style="display:none;"></div>
+            <!-- Hidden bar chart container kept for JS compatibility -->
+            <div id="barChartContainer" style="display:none;"></div>
 
             <!-- View All Button -->
-            <div style="display:flex; justify-content:center; margin-top:14px;">
+            <div style="display:flex; justify-content:center; margin-top:12px;">
                 <button type="button" id="openAllTeamBtn" class="px-btn-outline" style="width:100%; justify-content:center;">
                     View All Team Performance
                     <span class="material-symbols-outlined">trending_flat</span>
@@ -2294,10 +2619,10 @@
 
 <!-- VIEW ALL TEAM MODAL -->
 <div id="allTeamModal" class="px-modal-backdrop hidden">
-    <div class="px-modal-card" style="max-width: 550px;">
+    <div class="px-modal-card" style="max-width: 640px;">
         <h2 class="px-modal-title">Team Performance Leaderboard</h2>
-        <div id="allTeamModalContainer" style="max-height: 400px; overflow-y: auto; padding-right: 4px;">
-            <!-- Dynamic list of all employees -->
+        <div id="allTeamModalContainer" class="px-hbar-chart" style="max-height: 480px; overflow-y: auto; padding-right: 4px;">
+            <!-- Dynamic horizontal bar rows populated by manager.js -->
         </div>
         <div class="px-modal-actions" style="margin-top: 16px;">
             <button type="button" id="closeAllTeamBtn" class="px-btn-cancel">Close</button>
@@ -2396,6 +2721,17 @@
         new MutationObserver(() => {
             animateProgressBars();
         }).observe(teamContainer, { childList: true, subtree: true });
+    }
+
+    // Also observe the new hbarChart container for bar animations
+    const hbarChartEl = document.getElementById('hbarChart');
+    if (hbarChartEl) {
+        new MutationObserver(() => {
+            hbarChartEl.querySelectorAll('.px-hbar-fill:not(.pct-zero)[data-width]').forEach(el => {
+                const target = el.getAttribute('data-width');
+                setTimeout(() => { el.style.width = target; }, 80);
+            });
+        }).observe(hbarChartEl, { childList: true, subtree: true });
     }
 
     // feedbackMessage compatibility bridge

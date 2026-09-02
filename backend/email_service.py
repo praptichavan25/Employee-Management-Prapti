@@ -10,9 +10,10 @@ env_path = os.path.join(backend_dir, '.env')
 load_dotenv(env_path)
 
 
-def send_task_email(employee_name, employee_email, task, deadline, assigned_by="Prapti Chavan"):
+def send_task_email(employee_name, employee_email, task, deadline, assigned_by="Prapti Chavan", custom_subject=None, custom_body=None):
     """
     Sends a task assignment email to an employee with the assigning manager name.
+    Supports optional custom_subject and custom_body (e.g. from manager-approved AI draft).
     """
     # Read Gmail credentials from environment variables
     gmail_address = os.getenv('GMAIL_ADDRESS', '').strip()
@@ -26,9 +27,12 @@ def send_task_email(employee_name, employee_email, task, deadline, assigned_by="
         print("Error: GMAIL_ADDRESS and GMAIL_APP_PASSWORD environment variables must be set.")
         return False
 
-    # Email details
-    subject = "New Task Assigned - PHOENIX"
-    message_body = f"""Hello {employee_name},
+    # Email details (use custom if provided, otherwise fallback to standard template)
+    subject = custom_subject.strip() if custom_subject and custom_subject.strip() else "New Task Assigned - PHOENIX"
+    if custom_body and custom_body.strip():
+        message_body = custom_body.strip()
+    else:
+        message_body = f"""Hello {employee_name},
 
 You have been assigned a new task.
 

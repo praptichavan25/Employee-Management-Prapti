@@ -110,9 +110,9 @@ function hydrateDashboard() {
     document.getElementById('kpiPastDueTasks').textContent = pastDueTasks;
     document.getElementById('kpiCompletedTasks').textContent = completedTasks;
 
-    // 2. Hydrate Team Performance List
+    // 2. Hydrate Team Performance — Horizontal Bar Chart
     const performanceContainer = document.getElementById('teamPerformanceContainer');
-    performanceContainer.innerHTML = '';
+    performanceContainer.innerHTML = ''; // kept hidden, used for modal compat
 
     // Group tasks by employee
     const empStats = allEmployees.map(emp => {
@@ -122,78 +122,94 @@ function hydrateDashboard() {
         const active = empTasks.filter(t => (t.status || '').toLowerCase() !== 'completed' && !isTaskOverdue(t)).length;
         const pastDue = empTasks.filter(t => isTaskOverdue(t)).length;
         const assigned = empTasks.filter(t => (t.status || '').toLowerCase() === 'assigned' && !isTaskOverdue(t)).length;
-        
         const rate = total > 0 ? Math.round((completed / total) * 100) : 0;
         return { name: emp.name, total, completed, active, pastDue, assigned, rate };
     });
 
-    // Sort by completion rate descending for leaderboard
-    empStats.sort((a, b) => b.rate - a.rate);
+    // Sort: highest completion rate first; ties broken by completed count, then total
+    empStats.sort((a, b) => {
+        if (b.rate !== a.rate) return b.rate - a.rate;
+        if (b.completed !== a.completed) return b.completed - a.completed;
+        return b.total - a.total;
+    });
 
-    const top5 = empStats.slice(0, 5);
-    const avPalette = ['av-teal','av-blue','av-amber','av-rose','av-violet','av-lime'];
+    // Build horizontal bar row HTML
+    function renderHbarRow(stat, index) {
+        const isZero = stat.rate === 0;
+        const fillClass = isZero ? 'pct-zero' : (stat.rate >= 75 ? 'pct-high' : (stat.rate >= 40 ? 'pct-medium' : 'pct-low'));
+        const initials = stat.name.split(' ').map(n => n[0]).filter(Boolean).join('').toUpperCase().substring(0, 2) || stat.name.substring(0, 2).toUpperCase();
+        const rankBadge = (index === 0 && stat.rate > 0) ? '<span class="px-hbar-rank-pill">Top Performer</span>' : '';
 
-    function renderEmpRow(stat, index, showBadge) {
-        const initials = stat.name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
-        const avColor = avPalette[Math.abs(stat.name.hashCode()) % avPalette.length];
-        const starBadge = (showBadge && index === 0 && stat.rate > 0) ? `<span class="px-best-badge">⭐</span>` : '';
+        const tooltipLines = [
+            `<strong>${stat.name}</strong>`,
+            `Total: ${stat.total} &nbsp;·&nbsp; Completed: ${stat.completed}`,
+            `Active: ${stat.active} &nbsp;·&nbsp; Past Due: ${stat.pastDue}`,
+            `Completion Rate: ${stat.rate}%`
+        ].join('<br>');
 
         return `
-            <div class="px-emp-row">
-                <div class="px-emp-avatar-wrap">
-                    <div class="px-emp-avatar ${avColor}">${initials}</div>
-                    ${starBadge}
-                </div>
-                <div class="px-emp-info">
-                    <div class="px-emp-name">${stat.name}</div>
-                    <div class="px-emp-summary">
-                        <span>${stat.total} Tasks</span> · <span>${stat.completed} Done</span> · <span>${stat.active} Active</span>${stat.pastDue > 0 ? ` · <span style="color:var(--phoenix-coral)">${stat.pastDue} Past Due</span>` : ''}
+            <div class="px-hbar-item">
+                <div class="px-hbar-item-top">
+                    <div class="px-hbar-user-wrap">
+                        <div class="px-hbar-avatar">${initials}</div>
+                        <div class="px-hbar-user-info">
+                            <div class="px-hbar-name-row">
+                                <span class="px-hbar-name" title="${stat.name}">${stat.name}</span>
+                                ${rankBadge}
+                            </div>
+                            <div class="px-hbar-summary">
+                                <span>${stat.total} Task${stat.total !== 1 ? 's' : ''}</span>
+                                <span class="px-hbar-sep">·</span>
+                                <span>${stat.completed} Done</span>
+                                <span class="px-hbar-sep">·</span>
+                                <span>${stat.active} Active</span>
+                                ${stat.pastDue > 0 ? `<span class="px-hbar-sep">·</span><span class="px-hbar-pastdue">${stat.pastDue} Past Due</span>` : ''}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="px-hbar-rate-wrap">
+                        <span class="px-hbar-rate ${isZero ? 'zero' : ''}">${stat.rate}%</span>
                     </div>
                 </div>
-                <div class="px-emp-progress-wrap">
-                    <div class="px-progress-bar">
-                        <div class="px-progress-fill" data-width="${stat.rate}%" style="width:0%;"></div>
-                    </div>
-                    <span class="px-emp-rate">${stat.rate}%</span>
+                <div class="px-hbar-track">
+                    <div class="px-hbar-fill ${fillClass}" style="width:0%;" data-width="${stat.rate}%"></div>
                 </div>
+                <div class="px-hbar-tooltip">${tooltipLines}</div>
             </div>
         `;
     }
 
-    // Render top 5 on dashboard
-    top5.forEach((stat, idx) => {
-        performanceContainer.insertAdjacentHTML('beforeend', renderEmpRow(stat, idx, true));
-    });
+    // Render horizontal bar chart — show top 6 on dashboard, all in modal
+    const hbarChart = document.getElementById('hbarChart');
+    if (hbarChart) {
+        hbarChart.innerHTML = '';
+        const top6 = empStats.slice(0, 6);
+        top6.forEach((stat, idx) => {
+            hbarChart.insertAdjacentHTML('beforeend', renderHbarRow(stat, idx));
+        });
+        // Animate bars smoothly after DOM insertion
+        setTimeout(() => {
+            hbarChart.querySelectorAll('.px-hbar-fill:not(.pct-zero)').forEach(el => {
+                el.style.width = el.getAttribute('data-width');
+            });
+        }, 50);
+    }
 
-    // Populate the full team modal
+    // Populate the full team modal with all employees
     const allTeamModalContainer = document.getElementById('allTeamModalContainer');
     if (allTeamModalContainer) {
         allTeamModalContainer.innerHTML = '';
         empStats.forEach((stat, idx) => {
-            allTeamModalContainer.insertAdjacentHTML('beforeend', renderEmpRow(stat, idx, true));
+            allTeamModalContainer.insertAdjacentHTML('beforeend', renderHbarRow(stat, idx));
+        });
+        requestAnimationFrame(() => {
+            allTeamModalContainer.querySelectorAll('.px-hbar-fill:not(.pct-zero)').forEach(el => {
+                el.style.width = el.getAttribute('data-width');
+            });
         });
     }
 
-    // 3. Hydrate Bar Chart (Relative Task Performance)
-    const barChartContainer = document.getElementById('barChartContainer');
-    barChartContainer.innerHTML = '';
-
-    const maxTasks = Math.max(...empStats.map(s => s.total), 5); // Fallback to at least 5 for height mapping
-    
-    empStats.forEach(stat => {
-        const totalHeight = Math.max(Math.round((stat.total / maxTasks) * 100), 5); // Min 5% height to display bar
-        const completedRatio = stat.total > 0 ? Math.round((stat.completed / stat.total) * 100) : 0;
-        
-        const barHTML = `
-            <div class="px-bar-column" title="${stat.name}: ${stat.total} tasks, ${stat.completed} completed">
-                <div class="px-bar-outer" style="height:${totalHeight}%;">
-                    <div class="px-bar-inner" style="height:${completedRatio}%;"></div>
-                </div>
-                <span class="px-bar-label" title="${stat.name}">${stat.name.split(' ')[0]}</span>
-            </div>
-        `;
-        barChartContainer.insertAdjacentHTML('beforeend', barHTML);
-    });
+    // 3. Skip old vertical bar chart (barChartContainer is now hidden)
 
     // 4. Hydrate Donut Chart
     const assignedTasks = allTasks.filter(t => (t.status || '').toLowerCase() === 'assigned' && !isTaskOverdue(t)).length;
@@ -211,7 +227,7 @@ function hydrateDashboard() {
         const slice2 = slice1 + assignedPercent;
         const slice3 = slice2 + progressPercent;
         
-        donut.style.background = `conic-gradient(from 0deg, #3E9B7A 0% ${slice1}%, #5B6EE1 ${slice1}% ${slice2}%, #E6A23C ${slice2}% ${slice3}%, #E57373 ${slice3}% 100%)`;
+        donut.style.background = `conic-gradient(from 0deg, #1F5F5B 0% ${slice1}%, #64748B ${slice1}% ${slice2}%, #D4882C ${slice2}% ${slice3}%, #D35454 ${slice3}% 100%)`;
     }
     
     document.getElementById('donutPercentText').textContent = `${donePercent}%`;
@@ -526,7 +542,159 @@ if (addEmployeeForm) {
     });
 }
 
-// Existing Task Assignment Form Handler
+// ============================================================
+// PHOENIX AI EMAIL ASSISTANT LOGIC
+// ============================================================
+const generateAIEmailBtn = document.getElementById('generateAIEmailBtn');
+const generateAIEmailBtnText = document.getElementById('generateAIEmailBtnText');
+const aiEmailPanel = document.getElementById('aiEmailPanel');
+const aiSubjectInput = document.getElementById('aiSubjectInput');
+const aiBodyTextarea = document.getElementById('aiBodyTextarea');
+const aiErrorBanner = document.getElementById('aiErrorBanner');
+const aiErrorMessage = document.getElementById('aiErrorMessage');
+const closeAIPanelBtn = document.getElementById('closeAIPanelBtn');
+const copyAIEmailBtn = document.getElementById('copyAIEmailBtn');
+const reDraftAIBtn = document.getElementById('reDraftAIBtn');
+const sendAIEmailBtn = document.getElementById('sendAIEmailBtn');
+const aiSendFeedback = document.getElementById('aiSendFeedback');
+
+async function generateAIEmail() {
+    const employee = document.getElementById('employee').value.trim();
+    const task = document.getElementById('task').value.trim();
+    const deadlineDate = document.getElementById('deadline_date').value;
+    const deadlineTime = document.getElementById('deadline_time').value;
+    const priorityEl = document.querySelector('input[name="priority"]:checked');
+    const priority = priorityEl ? priorityEl.value : 'Medium';
+
+    if (!employee) {
+        alert('Please select an employee first.');
+        document.getElementById('employee').focus();
+        return;
+    }
+    if (!task) {
+        alert('Please enter a task description first.');
+        document.getElementById('task').focus();
+        return;
+    }
+
+    // Determine manager identity
+    let managerName = 'Prapti Chavan';
+    try {
+        const stored = localStorage.getItem('phoenix_user');
+        if (stored) {
+            const user = JSON.parse(stored);
+            if (user && user.name) managerName = user.name;
+        }
+    } catch (e) {
+        console.error('Error reading manager:', e);
+    }
+
+    // Set UI loading state
+    if (generateAIEmailBtn) {
+        generateAIEmailBtn.disabled = true;
+        generateAIEmailBtn.classList.add('loading');
+    }
+    if (generateAIEmailBtnText) {
+        generateAIEmailBtnText.textContent = 'Generating with OpenAI...';
+    }
+    if (aiErrorBanner) aiErrorBanner.style.display = 'none';
+
+    try {
+        const response = await fetch('http://127.0.0.1:5001/generate-ai-email', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                employee_name: employee,
+                task: task,
+                deadline_date: deadlineDate,
+                deadline_time: deadlineTime,
+                priority: priority,
+                assigned_by: managerName
+            })
+        });
+
+        const data = await response.json();
+
+        if (response.ok && data.success) {
+            // Build editable body from structured components
+            const parts = [
+                data.greeting || `Dear ${employee},`,
+                data.intro || '',
+                data.details || '',
+                data.action || '',
+                data.closing || '',
+                data.signature || `Regards,\n${managerName}\nProject Manager — PHOENIX`
+            ];
+            const fullBody = parts.filter(Boolean).join('\n\n');
+
+            if (aiSubjectInput) aiSubjectInput.value = data.subject || `[PHOENIX] New Task Assignment: ${task}`;
+            if (aiBodyTextarea) aiBodyTextarea.value = fullBody;
+
+            if (aiEmailPanel) {
+                aiEmailPanel.classList.add('visible');
+                aiEmailPanel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+        } else {
+            if (aiErrorMessage) {
+                aiErrorMessage.textContent = data.message || 'Failed to generate AI email.';
+            }
+            if (aiErrorBanner) aiErrorBanner.style.display = 'flex';
+            if (aiEmailPanel) aiEmailPanel.classList.add('visible');
+        }
+    } catch (err) {
+        console.error('AI generation request failed:', err);
+        if (aiErrorMessage) {
+            aiErrorMessage.textContent = 'Unable to reach backend server. Please ensure Flask app is running.';
+        }
+        if (aiErrorBanner) aiErrorBanner.style.display = 'flex';
+        if (aiEmailPanel) aiEmailPanel.classList.add('visible');
+    } finally {
+        if (generateAIEmailBtn) {
+            generateAIEmailBtn.disabled = false;
+            generateAIEmailBtn.classList.remove('loading');
+        }
+        if (generateAIEmailBtnText) {
+            generateAIEmailBtnText.textContent = 'Generate Email with AI';
+        }
+    }
+}
+
+// Generate button click handlers
+generateAIEmailBtn?.addEventListener('click', generateAIEmail);
+reDraftAIBtn?.addEventListener('click', generateAIEmail);
+
+// Close AI preview panel
+closeAIPanelBtn?.addEventListener('click', () => {
+    aiEmailPanel?.classList.remove('visible');
+});
+
+// Copy AI email to clipboard
+copyAIEmailBtn?.addEventListener('click', async () => {
+    const subj = aiSubjectInput ? aiSubjectInput.value.trim() : '';
+    const body = aiBodyTextarea ? aiBodyTextarea.value.trim() : '';
+    const fullEmailText = `Subject: ${subj}\n\n${body}`;
+
+    try {
+        await navigator.clipboard.writeText(fullEmailText);
+        const originalHtml = copyAIEmailBtn.innerHTML;
+        copyAIEmailBtn.innerHTML = '<span class="material-symbols-outlined" style="font-size:13px;">check</span><span>Copied!</span>';
+        setTimeout(() => {
+            copyAIEmailBtn.innerHTML = originalHtml;
+        }, 2200);
+    } catch (e) {
+        alert('Could not copy to clipboard.');
+    }
+});
+
+// "Assign & Send This Email" button click handler
+sendAIEmailBtn?.addEventListener('click', () => {
+    const submitBtn = document.querySelector('#taskForm button[type="submit"]');
+    if (submitBtn) {
+        submitBtn.click();
+    }
+});
+
+// Existing Task Assignment Form Handler (supports AI approved draft dispatch)
 document.getElementById('taskForm').addEventListener('submit', async function (e) {
     e.preventDefault();
 
@@ -536,6 +704,11 @@ document.getElementById('taskForm').addEventListener('submit', async function (e
     const deadlineTime = document.getElementById('deadline_time').value;
     const feedbackMessage = document.getElementById('feedbackMessage');
     const submitBtn = document.querySelector('#taskForm button[type="submit"]');
+
+    // Check if AI preview panel is active and has custom text
+    const isAIPanelOpen = aiEmailPanel && aiEmailPanel.classList.contains('visible');
+    const customSubject = isAIPanelOpen && aiSubjectInput ? aiSubjectInput.value.trim() : '';
+    const customBody = isAIPanelOpen && aiBodyTextarea ? aiBodyTextarea.value.trim() : '';
 
     // Clear previous feedback
     feedbackMessage.textContent = '';
@@ -553,6 +726,10 @@ document.getElementById('taskForm').addEventListener('submit', async function (e
         submitBtn.disabled = true;
         submitBtn.innerHTML = 'Assigning...';
     }
+    if (sendAIEmailBtn) {
+        sendAIEmailBtn.disabled = true;
+        sendAIEmailBtn.innerHTML = '<span class="material-symbols-outlined">sync</span> Sending...';
+    }
 
     // Determine logged-in manager name
     let managerName = 'Prapti Chavan';
@@ -569,32 +746,42 @@ document.getElementById('taskForm').addEventListener('submit', async function (e
     }
 
     try {
+        const payload = {
+            employee_name: employee,
+            task: task,
+            deadline_date: deadlineDate,
+            deadline_time: deadlineTime,
+            assigned_by: managerName
+        };
+
+        // Attach approved AI email content if customized
+        if (customSubject) payload.custom_subject = customSubject;
+        if (customBody) payload.custom_body = customBody;
+
         const response = await fetch('http://127.0.0.1:5001/assign-task', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({
-                employee_name: employee,
-                task: task,
-                deadline_date: deadlineDate,
-                deadline_time: deadlineTime,
-                assigned_by: managerName
-            })
+            body: JSON.stringify(payload)
         });
 
         const data = await response.json();
 
         if (response.ok && data.success) {
-            feedbackMessage.textContent = `✓ Task assigned successfully! Email sent to ${employee}.`;
+            const emailTypeNote = (customSubject && customBody) ? 'AI-customized email' : 'email';
+            feedbackMessage.textContent = `✓ Task assigned successfully! ${emailTypeNote} sent to ${employee}.`;
             feedbackMessage.className = 'px-feedback show success';
 
             // Refresh KPIs & List
             await loadAllTasks();
 
-            // Reset form after delay
+            // Reset form and close AI panel after brief delay
             setTimeout(function () {
                 document.getElementById('taskForm').reset();
+                if (aiEmailPanel) aiEmailPanel.classList.remove('visible');
+                if (aiSubjectInput) aiSubjectInput.value = '';
+                if (aiBodyTextarea) aiBodyTextarea.value = '';
                 feedbackMessage.className = 'px-feedback';
                 feedbackMessage.textContent = '';
             }, 4000);
@@ -609,6 +796,10 @@ document.getElementById('taskForm').addEventListener('submit', async function (e
         if (submitBtn) {
             submitBtn.disabled = false;
             submitBtn.innerHTML = 'Assign Task <span class="material-symbols-outlined" style="font-size:17px;">arrow_forward</span>';
+        }
+        if (sendAIEmailBtn) {
+            sendAIEmailBtn.disabled = false;
+            sendAIEmailBtn.innerHTML = '<span class="material-symbols-outlined">send</span> Assign &amp; Send This Email';
         }
     }
 });
@@ -686,7 +877,14 @@ function closeModal(id) {
 }
 
 // View All Team
-document.getElementById('openAllTeamBtn')?.addEventListener('click', () => openModal('allTeamModal'));
+document.getElementById('openAllTeamBtn')?.addEventListener('click', () => {
+    openModal('allTeamModal');
+    setTimeout(() => {
+        document.querySelectorAll('#allTeamModalContainer .px-hbar-fill:not(.pct-zero)').forEach(el => {
+            el.style.width = el.getAttribute('data-width');
+        });
+    }, 60);
+});
 document.getElementById('closeAllTeamBtn')?.addEventListener('click', () => closeModal('allTeamModal'));
 
 // View All Attention

@@ -5,6 +5,7 @@ import os
 import sqlite3
 from datetime import datetime
 from email_service import send_task_email
+from ai_email_service import generate_task_email
 
 app = Flask(__name__)
 CORS(app)
@@ -218,6 +219,79 @@ def add_employee():
     }), 200
 
 
+@app.route('/generate-ai-email', methods=['POST'])
+def generate_ai_email():
+    """
+    Generates a structured AI-drafted email for a task assignment.
+    Accepts: employee_name, task, deadline_date, deadline_time, assigned_by, priority
+    Returns: structured email fields (subject, greeting, intro, details, action, closing, signature)
+    The OpenAI API key is NEVER returned to the caller.
+    """
+    data = request.get_json() or {}
+
+    employee_name  = data.get('employee_name', '').strip()
+    task           = data.get('task', '').strip()
+    deadline_date  = data.get('deadline_date', '').strip()
+    deadline_time  = data.get('deadline_time', '').strip()
+    assigned_by    = data.get('assigned_by', '').strip()
+    priority       = data.get('priority', 'Medium').strip()
+
+    # Validate required fields
+    if not employee_name or not task:
+        return jsonify({
+            'success': False,
+            'message': 'Missing required fields: employee_name and task are required.'
+        }), 400
+
+    # Validate manager identity
+    manager_name = validate_manager(assigned_by) if assigned_by else 'Prapti Chavan'
+    if not manager_name:
+        return jsonify({
+            'success': False,
+            'message': 'Unauthorized or invalid Project Manager.'
+        }), 403
+
+    # Build human-readable deadline string
+    deadline_str = ''
+    if deadline_date and deadline_time:
+        try:
+            dt = datetime.strptime(f'{deadline_date} {deadline_time}', '%Y-%m-%d %H:%M')
+            deadline_str = dt.strftime('%d %B %Y at %I:%M %p IST')
+        except ValueError:
+            deadline_str = f'{deadline_date} {deadline_time}'
+    elif deadline_date:
+        deadline_str = deadline_date
+    else:
+        deadline_str = 'TBD'
+
+    # Call the AI email generation service
+    result = generate_task_email(
+        employee_name=employee_name,
+        task_description=task,
+        deadline=deadline_str,
+        manager_name=manager_name,
+        priority=priority
+    )
+
+    if result.get('success'):
+        return jsonify({
+            'success':   True,
+            'subject':   result['subject'],
+            'greeting':  result['greeting'],
+            'intro':     result['intro'],
+            'details':   result['details'],
+            'action':    result['action'],
+            'closing':   result['closing'],
+            'signature': result['signature'],
+            'notice':    result.get('notice')
+        }), 200
+    else:
+        return jsonify({
+            'success': False,
+            'message': result.get('error', 'AI email generation failed.')
+        }), 500
+
+
 @app.route('/assign-task', methods=['POST'])
 def assign_task():
     data = request.get_json() or {}
@@ -226,6 +300,8 @@ def assign_task():
     deadline_date_str = data.get('deadline_date', '').strip()
     deadline_time_str = data.get('deadline_time', '').strip()
     assigned_by_input = data.get('assigned_by', '').strip()
+    custom_subject = data.get('custom_subject', '').strip()
+    custom_body = data.get('custom_body', '').strip()
 
     # Fallback to older `deadline` if the frontend hasn't been fully updated yet or API is used directly
     legacy_deadline = data.get('deadline', '').strip()
@@ -295,7 +371,15 @@ def assign_task():
         }), 500
 
     # 4. Send email using existing email service with manager name
-    email_sent = send_task_email(employee_name, employee_email, task, email_deadline_str, assigned_by=manager_name)
+    email_sent = send_task_email(
+        employee_name,
+        employee_email,
+        task,
+        email_deadline_str,
+        assigned_by=manager_name,
+        custom_subject=custom_subject or None,
+        custom_body=custom_body or None
+    )
 
     # 5. Return success only when task stored and email sent
     if email_sent:
