@@ -127,36 +127,52 @@ function hydrateDashboard() {
         return { name: emp.name, total, completed, active, pastDue, assigned, rate };
     });
 
+    // Sort by completion rate descending for leaderboard
+    empStats.sort((a, b) => b.rate - a.rate);
+
+    const top5 = empStats.slice(0, 5);
     const avPalette = ['av-teal','av-blue','av-amber','av-rose','av-violet','av-lime'];
 
-    empStats.forEach(stat => {
+    function renderEmpRow(stat, index, showBadge) {
         const initials = stat.name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
-        
-        // Pick avatar color from palette based on name hash
         const avColor = avPalette[Math.abs(stat.name.hashCode()) % avPalette.length];
+        const starBadge = (showBadge && index === 0 && stat.rate > 0) ? `<span class="px-best-badge">⭐</span>` : '';
 
-        const rowHTML = `
+        return `
             <div class="px-emp-row">
-                <div class="px-emp-avatar ${avColor}">${initials}</div>
+                <div class="px-emp-avatar-wrap">
+                    <div class="px-emp-avatar ${avColor}">${initials}</div>
+                    ${starBadge}
+                </div>
                 <div class="px-emp-info">
                     <div class="px-emp-name">${stat.name}</div>
-                    <div class="px-emp-chips">
-                        <span class="px-chip px-chip-total">${stat.total} Total</span>
-                        <span class="px-chip px-chip-done">✓ ${stat.completed} Done</span>
-                        <span class="px-chip px-chip-active">◷ ${stat.active} Active</span>
-                        ${stat.pastDue > 0 ? `<span class="px-chip px-chip-due">⚠ ${stat.pastDue} Past Due</span>` : ''}
+                    <div class="px-emp-summary">
+                        <span>${stat.total} Tasks</span> · <span>${stat.completed} Done</span> · <span>${stat.active} Active</span>${stat.pastDue > 0 ? ` · <span style="color:var(--phoenix-coral)">${stat.pastDue} Past Due</span>` : ''}
                     </div>
                 </div>
                 <div class="px-emp-progress-wrap">
                     <div class="px-progress-bar">
                         <div class="px-progress-fill" data-width="${stat.rate}%" style="width:0%;"></div>
                     </div>
-                    <span class="px-emp-pct">${stat.rate}%</span>
+                    <span class="px-emp-rate">${stat.rate}%</span>
                 </div>
             </div>
         `;
-        performanceContainer.insertAdjacentHTML('beforeend', rowHTML);
+    }
+
+    // Render top 5 on dashboard
+    top5.forEach((stat, idx) => {
+        performanceContainer.insertAdjacentHTML('beforeend', renderEmpRow(stat, idx, true));
     });
+
+    // Populate the full team modal
+    const allTeamModalContainer = document.getElementById('allTeamModalContainer');
+    if (allTeamModalContainer) {
+        allTeamModalContainer.innerHTML = '';
+        empStats.forEach((stat, idx) => {
+            allTeamModalContainer.insertAdjacentHTML('beforeend', renderEmpRow(stat, idx, true));
+        });
+    }
 
     // 3. Hydrate Bar Chart (Relative Task Performance)
     const barChartContainer = document.getElementById('barChartContainer');
@@ -169,11 +185,11 @@ function hydrateDashboard() {
         const completedRatio = stat.total > 0 ? Math.round((stat.completed / stat.total) * 100) : 0;
         
         const barHTML = `
-            <div style="display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer;flex:1;max-width:64px;min-width:36px;" title="${stat.name}: ${stat.total} tasks, ${stat.completed} completed">
-                <div style="width:26px;background:#BFDBFE;border-radius:6px 6px 0 0;position:relative;height:${totalHeight}%;min-height:18px;transition:opacity 0.15s;" onmouseenter="this.style.opacity='.75'" onmouseleave="this.style.opacity='1'">
-                    <div style="position:absolute;bottom:0;width:100%;background:#1F5F5B;border-radius:6px 6px 0 0;height:${completedRatio}%;"></div>
+            <div class="px-bar-column" title="${stat.name}: ${stat.total} tasks, ${stat.completed} completed">
+                <div class="px-bar-outer" style="height:${totalHeight}%;">
+                    <div class="px-bar-inner" style="height:${completedRatio}%;"></div>
                 </div>
-                <span style="font-size:10px;color:#7A8C8B;font-family:'Poppins',sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:56px;text-align:center;" title="${stat.name}">${stat.name.split(' ')[0]}</span>
+                <span class="px-bar-label" title="${stat.name}">${stat.name.split(' ')[0]}</span>
             </div>
         `;
         barChartContainer.insertAdjacentHTML('beforeend', barHTML);
@@ -195,7 +211,7 @@ function hydrateDashboard() {
         const slice2 = slice1 + assignedPercent;
         const slice3 = slice2 + progressPercent;
         
-        donut.style.background = `conic-gradient(from 0deg, #1f5e5b 0% ${slice1}%, #cbdde6 ${slice1}% ${slice2}%, #ebc162 ${slice2}% ${slice3}%, #ffdad6 ${slice3}% 100%)`;
+        donut.style.background = `conic-gradient(from 0deg, #3E9B7A 0% ${slice1}%, #5B6EE1 ${slice1}% ${slice2}%, #E6A23C ${slice2}% ${slice3}%, #E57373 ${slice3}% 100%)`;
     }
     
     document.getElementById('donutPercentText').textContent = `${donePercent}%`;
@@ -204,7 +220,7 @@ function hydrateDashboard() {
     document.getElementById('donutProgressLegend').textContent = progressTasks;
     document.getElementById('donutPastDueLegend').textContent = pastDueTasks;
 
-    // 5. Hydrate Upcoming Deadlines Container
+    // 5. Hydrate Upcoming Deadlines Container (Timeline View)
     const upcomingContainer = document.getElementById('upcomingDeadlinesContainer');
     upcomingContainer.innerHTML = '';
 
@@ -216,90 +232,203 @@ function hydrateDashboard() {
         })
         .filter(x => x.date !== null)
         .sort((a, b) => a.date - b.date)
-        .slice(0, 3);
+        .slice(0, 5);
+
+    // Store for calendar use
+    window._allUpcomingTasks = allTasks
+        .filter(t => (t.status || '').toLowerCase() !== 'completed')
+        .map(t => ({ task: t, date: parseDeadlineDate(t.deadline) }))
+        .filter(x => x.date !== null);
 
     if (upcomingTasksList.length === 0) {
         upcomingContainer.innerHTML = `<div class="px-empty">No upcoming deadlines 🎉</div>`;
     } else {
-        upcomingTasksList.forEach(item => {
-            const diffMs = item.date - new Date();
-            const diffHrs = Math.floor(diffMs / (1000 * 60 * 60));
-            const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-            let badgeText;
-            let badgeCls = 'badge-upcoming';
+        const now = new Date();
+        const todayStr = now.toDateString();
+        const tomorrow = new Date(now); tomorrow.setDate(tomorrow.getDate() + 1);
+        const tomorrowStr = tomorrow.toDateString();
 
-            if (diffDays <= 0 && diffHrs >= 0) {
-                const hrsLeft = Math.max(diffHrs, 0);
-                badgeText = hrsLeft === 0 ? 'Due now' : `Due in ${hrsLeft}h`;
-                badgeCls = 'badge-today';
-            } else if (diffDays === 1) {
-                badgeText = 'Due tomorrow';
-                badgeCls = 'badge-tomorrow';
+        let lastGroupLabel = '';
+
+        upcomingTasksList.forEach(item => {
+            const itemDateStr = item.date.toDateString();
+
+            // Determine group label
+            let groupLabel;
+            if (itemDateStr === todayStr) {
+                groupLabel = 'TODAY';
+            } else if (itemDateStr === tomorrowStr) {
+                groupLabel = 'TOMORROW';
             } else {
-                badgeText = `Due in ${diffDays} days`;
+                groupLabel = item.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }).toUpperCase();
             }
 
-            const deadlineDateStr = item.date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+            // Insert group header if new group
+            if (groupLabel !== lastGroupLabel) {
+                upcomingContainer.insertAdjacentHTML('beforeend', `<div class="px-timeline-group-label">${groupLabel}</div>`);
+                lastGroupLabel = groupLabel;
+            }
+
+            // Determine urgency dot class and countdown
+            const diffMs = item.date - now;
+            const diffHrs = Math.floor(diffMs / (1000 * 60 * 60));
+            const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+            let dotClass, countdownClass, countdownText;
+
+            if (diffHrs < 2) {
+                dotClass = 'node-red';
+                countdownClass = 'urgent';
+                countdownText = diffHrs <= 0 ? `⏱ Due in ${Math.max(diffMins, 0)}m` : `⏱ Due in ${diffHrs}h ${diffMins}m`;
+            } else if (itemDateStr === todayStr) {
+                dotClass = 'node-amber';
+                countdownClass = 'today';
+                countdownText = `⏱ Due in ${diffHrs}h ${diffMins}m`;
+            } else if (itemDateStr === tomorrowStr) {
+                dotClass = 'node-indigo';
+                countdownClass = 'soon';
+                countdownText = `⏱ Due tomorrow`;
+            } else {
+                dotClass = 'node-teal';
+                countdownClass = 'future';
+                const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+                countdownText = `⏱ Due in ${diffDays} days`;
+            }
+
             const deadlineTimeStr = item.date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
 
-            const upcomingHTML = `
-                <div class="px-deadline-item">
-                    <div class="px-deadline-icon-col">
-                        <span class="material-symbols-outlined">calendar_month</span>
-                    </div>
-                    <div class="px-deadline-body">
-                        <div class="px-deadline-title" title="${item.task.task}">${item.task.task}</div>
-                        <div class="px-deadline-meta">${item.task.employee_name} &middot; ${deadlineDateStr}, ${deadlineTimeStr}</div>
-                        <span class="px-deadline-badge ${badgeCls}">${badgeText}</span>
+            const timelineHTML = `
+                <div class="px-timeline-item">
+                    <div class="px-timeline-dot ${dotClass}"></div>
+                    <div class="px-timeline-body">
+                        <div class="px-timeline-time">${deadlineTimeStr}</div>
+                        <div class="px-timeline-task-name" title="${item.task.task}">${item.task.task}</div>
+                        <div class="px-timeline-assignee">${item.task.employee_name}</div>
+                        <div class="px-timeline-countdown ${countdownClass}">${countdownText}</div>
                     </div>
                 </div>
             `;
-            upcomingContainer.insertAdjacentHTML('beforeend', upcomingHTML);
+            upcomingContainer.insertAdjacentHTML('beforeend', timelineHTML);
         });
     }
 
-    // 6. Hydrate Past Due Alert Card (Needs Attention)
+    // 6. Hydrate Needs Attention (Priority Alert Feed)
     const pastDueContainer = document.getElementById('pastDueContainer');
+    const attentionCountBadge = document.getElementById('attentionCount');
     
-    const overdueTasksList = allTasks
-        .filter(t => isTaskOverdue(t))
-        .map(t => {
-            const date = parseDeadlineDate(t.deadline);
-            return { task: t, date };
-        })
-        .filter(x => x.date !== null)
-        .sort((a, b) => a.date - b.date); // Oldest first
+    // Build combined alert list: overdue tasks + tasks approaching deadline (< 12h)
+    const now2 = new Date();
+    const alertItems = [];
 
-    if (overdueTasksList.length === 0) {
-        pastDueContainer.parentElement.style.display = 'none';
-    } else {
-        pastDueContainer.parentElement.style.display = '';
-        // Show all overdue tasks as a premium stacked list
-        let overdueHTML = '';
-        overdueTasksList.forEach(item => {
-            const diffMs = new Date() - item.date;
-            const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-            const diffDays = Math.floor(diffHours / 24);
-            const remHours = diffHours % 24;
-            const overdueTimeStr = diffDays === 0 ? `${remHours} hours` : `${diffDays} days, ${remHours} hours`;
-            const escapedTask = item.task.task.replace(/'/g, "\\'");
-            const escapedEmp = item.task.employee_name.replace(/'/g, "\\'");
+    allTasks.forEach(t => {
+        if ((t.status || '').toLowerCase() === 'completed') return;
+        const date = parseDeadlineDate(t.deadline);
+        if (!date) return;
 
-            overdueHTML += `
-                <div class="px-overdue-item">
-                    <div class="px-overdue-task" title="${item.task.task}">${item.task.task}</div>
-                    <div class="px-overdue-assignee">Assigned to: ${item.task.employee_name}</div>
-                    <span class="px-overdue-badge">⏱ Overdue by ${overdueTimeStr}</span>
-                    <div>
-                        <button onclick="sendReminder('${escapedEmp}', '${escapedTask}')" class="px-reminder-btn">
-                            <span class="material-symbols-outlined" style="font-size:13px;">send</span>
-                            Send Reminder
-                        </button>
-                    </div>
+        const diffMs = date - now2;
+        const diffHrs = diffMs / (1000 * 60 * 60);
+        const overdueMs = now2 - date;
+        const overdueHrs = overdueMs / (1000 * 60 * 60);
+        const overdueDays = Math.floor(overdueHrs / 24);
+
+        if (isTaskOverdue(t)) {
+            // Past due task
+            let urgency, urgencyDot, overdueText;
+            if (overdueHrs > 24) {
+                urgency = 'urgency-red';
+                urgencyDot = '🔴';
+            } else {
+                urgency = 'urgency-orange';
+                urgencyDot = '🟠';
+            }
+            const remHours = Math.floor(overdueHrs) % 24;
+            overdueText = overdueDays === 0 ? `Overdue by ${Math.floor(overdueHrs)} hours` : `Overdue by ${overdueDays} days`;
+
+            alertItems.push({
+                task: t,
+                date: date,
+                urgency: urgency,
+                urgencyDot: urgencyDot,
+                metaText: `${t.employee_name} · ${overdueText}`,
+                sortKey: -overdueMs, // Most overdue first (largest negative)
+                category: 'past_due',
+                priority: (t.priority || '').toLowerCase()
+            });
+        } else if (diffHrs > 0 && diffHrs <= 12) {
+            // Approaching deadline
+            const hrsLeft = Math.floor(diffHrs);
+            const minsLeft = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+            alertItems.push({
+                task: t,
+                date: date,
+                urgency: 'urgency-yellow',
+                urgencyDot: '🟡',
+                metaText: `${t.employee_name} · Due in ${hrsLeft}h ${minsLeft}m`,
+                sortKey: diffMs, // Soonest first
+                category: 'due_today',
+                priority: (t.priority || '').toLowerCase()
+            });
+        }
+    });
+
+    // Sort: red first, then orange, then yellow, and within each by severity
+    alertItems.sort((a, b) => {
+        const urgencyOrder = { 'urgency-red': 0, 'urgency-orange': 1, 'urgency-yellow': 2 };
+        const diff = (urgencyOrder[a.urgency] || 0) - (urgencyOrder[b.urgency] || 0);
+        if (diff !== 0) return diff;
+        return a.sortKey - b.sortKey;
+    });
+
+    // Store globally for filtering
+    window._allAlertItems = alertItems;
+
+    // Update badge count
+    if (attentionCountBadge) {
+        attentionCountBadge.textContent = alertItems.length;
+    }
+
+    // Render alert items helper
+    function renderAlertItem(item) {
+        const escapedTask = item.task.task.replace(/'/g, "\\'");
+        const escapedEmp = item.task.employee_name.replace(/'/g, "\\'");
+        return `
+            <div class="px-alert-item ${item.urgency}" data-category="${item.category}" data-priority="${item.priority}">
+                <span class="px-alert-dot">${item.urgencyDot}</span>
+                <div class="px-alert-body">
+                    <div class="px-alert-task-name" title="${item.task.task}">${item.task.task}</div>
+                    <div class="px-alert-meta">${item.metaText}</div>
                 </div>
-            `;
-        });
-        pastDueContainer.innerHTML = overdueHTML;
+                <div class="px-alert-actions">
+                    <button onclick="sendReminder('${escapedEmp}', '${escapedTask}')" class="px-btn-remind">
+                        <span class="material-symbols-outlined">send</span>
+                        Send Reminder
+                    </button>
+                </div>
+            </div>
+        `;
+    }
+
+    // Show/hide attention card
+    const attentionCard = document.getElementById('attentionCard');
+    const viewAllAttentionContainer = document.getElementById('viewAllAttentionContainer');
+
+    if (alertItems.length === 0) {
+        if (attentionCard) attentionCard.style.display = 'none';
+    } else {
+        if (attentionCard) attentionCard.style.display = '';
+        // Dashboard: show top 4
+        const dashboardItems = alertItems.slice(0, 4);
+        pastDueContainer.innerHTML = dashboardItems.map(renderAlertItem).join('');
+
+        // Show/hide View All button
+        if (viewAllAttentionContainer) {
+            viewAllAttentionContainer.style.display = alertItems.length > 4 ? '' : 'none';
+        }
+
+        // Populate full attention modal
+        const allAttentionModalContainer = document.getElementById('allAttentionModalContainer');
+        if (allAttentionModalContainer) {
+            allAttentionModalContainer.innerHTML = alertItems.map(renderAlertItem).join('');
+        }
     }
 }
 
@@ -483,3 +612,212 @@ document.getElementById('taskForm').addEventListener('submit', async function (e
         }
     }
 });
+
+// ============================================================
+// FILTER TABS — Needs Attention
+// ============================================================
+document.querySelectorAll('.px-filter-btn').forEach(btn => {
+    btn.addEventListener('click', function () {
+        // Toggle active class
+        document.querySelectorAll('.px-filter-btn').forEach(b => b.classList.remove('active'));
+        this.classList.add('active');
+
+        const filter = this.getAttribute('data-filter');
+        const items = window._allAlertItems || [];
+        let filtered;
+
+        if (filter === 'all') {
+            filtered = items;
+        } else if (filter === 'past_due') {
+            filtered = items.filter(i => i.category === 'past_due');
+        } else if (filter === 'due_today') {
+            filtered = items.filter(i => i.category === 'due_today');
+        } else if (filter === 'high') {
+            filtered = items.filter(i => i.priority === 'high');
+        } else {
+            filtered = items;
+        }
+
+        const container = document.getElementById('pastDueContainer');
+        if (filtered.length === 0) {
+            container.innerHTML = '<div class="px-empty">No tasks match this filter.</div>';
+        } else {
+            const display = filtered.slice(0, 4);
+            container.innerHTML = display.map(item => {
+                const escapedTask = item.task.task.replace(/'/g, "\\'");
+                const escapedEmp = item.task.employee_name.replace(/'/g, "\\'");
+                return `
+                    <div class="px-alert-item ${item.urgency}" data-category="${item.category}" data-priority="${item.priority}">
+                        <span class="px-alert-dot">${item.urgencyDot}</span>
+                        <div class="px-alert-body">
+                            <div class="px-alert-task-name" title="${item.task.task}">${item.task.task}</div>
+                            <div class="px-alert-meta">${item.metaText}</div>
+                        </div>
+                        <div class="px-alert-actions">
+                            <button onclick="sendReminder('${escapedEmp}', '${escapedTask}')" class="px-btn-remind">
+                                <span class="material-symbols-outlined">send</span>
+                                Send Reminder
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Update View All button visibility
+        const viewAllBtn = document.getElementById('viewAllAttentionContainer');
+        if (viewAllBtn) {
+            viewAllBtn.style.display = filtered.length > 4 ? '' : 'none';
+        }
+    });
+});
+
+// ============================================================
+// MODAL OPEN/CLOSE HANDLERS
+// ============================================================
+function openModal(id) {
+    const modal = document.getElementById(id);
+    if (modal) modal.classList.remove('hidden');
+}
+
+function closeModal(id) {
+    const modal = document.getElementById(id);
+    if (modal) modal.classList.add('hidden');
+}
+
+// View All Team
+document.getElementById('openAllTeamBtn')?.addEventListener('click', () => openModal('allTeamModal'));
+document.getElementById('closeAllTeamBtn')?.addEventListener('click', () => closeModal('allTeamModal'));
+
+// View All Attention
+document.getElementById('openAllAttentionBtn')?.addEventListener('click', () => openModal('allAttentionModal'));
+document.getElementById('closeAllAttentionBtn')?.addEventListener('click', () => closeModal('allAttentionModal'));
+
+// Calendar
+document.getElementById('openCalendarBtn')?.addEventListener('click', () => {
+    openModal('calendarModal');
+    renderCalendar();
+});
+document.getElementById('closeCalendarBtn')?.addEventListener('click', () => closeModal('calendarModal'));
+
+// Close modals on backdrop click
+['allTeamModal', 'allAttentionModal', 'calendarModal'].forEach(modalId => {
+    document.getElementById(modalId)?.addEventListener('click', function (e) {
+        if (e.target === this) closeModal(modalId);
+    });
+});
+
+// ============================================================
+// INTERACTIVE CALENDAR
+// ============================================================
+let currentCalendarMonth = new Date().getMonth();
+let currentCalendarYear = new Date().getFullYear();
+
+document.getElementById('prevMonthBtn')?.addEventListener('click', () => {
+    currentCalendarMonth--;
+    if (currentCalendarMonth < 0) {
+        currentCalendarMonth = 11;
+        currentCalendarYear--;
+    }
+    renderCalendar();
+});
+
+document.getElementById('nextMonthBtn')?.addEventListener('click', () => {
+    currentCalendarMonth++;
+    if (currentCalendarMonth > 11) {
+        currentCalendarMonth = 0;
+        currentCalendarYear++;
+    }
+    renderCalendar();
+});
+
+function renderCalendar() {
+    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+        'July', 'August', 'September', 'October', 'November', 'December'];
+
+    const titleEl = document.getElementById('calendarMonthYear');
+    if (titleEl) titleEl.textContent = `${monthNames[currentCalendarMonth]} ${currentCalendarYear}`;
+
+    const grid = document.getElementById('calendarDaysGrid');
+    if (!grid) return;
+    grid.innerHTML = '';
+
+    const firstDay = new Date(currentCalendarYear, currentCalendarMonth, 1).getDay();
+    const daysInMonth = new Date(currentCalendarYear, currentCalendarMonth + 1, 0).getDate();
+    const today = new Date();
+
+    // Build task date lookup for this month
+    const allTasksWithDates = (window._allUpcomingTasks || []).concat(
+        (window._allAlertItems || []).map(a => ({ task: a.task, date: a.date }))
+    );
+    const tasksByDay = {};
+    allTasksWithDates.forEach(item => {
+        if (!item.date) return;
+        if (item.date.getMonth() === currentCalendarMonth && item.date.getFullYear() === currentCalendarYear) {
+            const day = item.date.getDate();
+            if (!tasksByDay[day]) tasksByDay[day] = [];
+            // Deduplicate by task description
+            if (!tasksByDay[day].some(t => t.task.task === item.task.task && t.task.employee_name === item.task.employee_name)) {
+                tasksByDay[day].push(item);
+            }
+        }
+    });
+
+    // Empty cells for days before the first
+    for (let i = 0; i < firstDay; i++) {
+        grid.insertAdjacentHTML('beforeend', '<div class="px-calendar-day empty"></div>');
+    }
+
+    // Actual day cells
+    for (let d = 1; d <= daysInMonth; d++) {
+        const isToday = (d === today.getDate() && currentCalendarMonth === today.getMonth() && currentCalendarYear === today.getFullYear());
+        const hasTasks = tasksByDay[d] && tasksByDay[d].length > 0;
+        let classes = 'px-calendar-day';
+        if (isToday) classes += ' today';
+        if (hasTasks) classes += ' has-tasks';
+
+        const dayEl = document.createElement('div');
+        dayEl.className = classes;
+        dayEl.textContent = d;
+        dayEl.setAttribute('data-day', d);
+        dayEl.addEventListener('click', () => selectCalendarDay(d, tasksByDay[d] || []));
+        grid.appendChild(dayEl);
+    }
+
+    // Hide tasks panel initially
+    const panel = document.getElementById('calendarDayTasksPanel');
+    if (panel) panel.classList.add('hidden');
+}
+
+function selectCalendarDay(day, tasks) {
+    // Highlight selected day
+    document.querySelectorAll('.px-calendar-day').forEach(el => el.classList.remove('selected'));
+    const dayEl = document.querySelector(`.px-calendar-day[data-day="${day}"]`);
+    if (dayEl) dayEl.classList.add('selected');
+
+    const panel = document.getElementById('calendarDayTasksPanel');
+    const label = document.getElementById('selectedDayLabel');
+    const list = document.getElementById('calendarDayTasksList');
+
+    if (!panel || !list) return;
+
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    if (label) label.textContent = `Tasks on ${monthNames[currentCalendarMonth]} ${day}, ${currentCalendarYear}`;
+
+    if (tasks.length === 0) {
+        list.innerHTML = '<div class="px-empty" style="padding:12px 0;">No tasks on this day.</div>';
+    } else {
+        list.innerHTML = tasks.map(item => {
+            const timeStr = item.date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+            return `
+                <div class="px-calendar-task-item">
+                    <span class="px-cal-task-time">${timeStr}</span>
+                    <span class="px-cal-task-name">${item.task.task}</span>
+                    <span class="px-cal-task-assignee">${item.task.employee_name}</span>
+                </div>
+            `;
+        }).join('');
+    }
+
+    panel.classList.remove('hidden');
+}
