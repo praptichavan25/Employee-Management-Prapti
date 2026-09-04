@@ -23,6 +23,7 @@
             }
         }
     </script>
+    <link rel="stylesheet" href="css/styles.css?v=7.0"/>
 
     <style>
         /* =====================================================
@@ -1442,18 +1443,18 @@
         .px-right-col {
             display: flex;
             flex-direction: column;
-            gap: 24px;
+            gap: 16px;
         }
 
         /* Upcoming Deadlines */
         .px-deadlines-card {
-            padding: 22px 20px;
+            padding: 18px 18px;
         }
 
         .px-deadline-item {
             display: flex;
-            gap: 14px;
-            padding: 14px 0;
+            gap: 10px;
+            padding: 10px 0;
             border-bottom: 1px solid rgba(0, 0, 0, 0.05);
             transition: all 0.2s ease;
         }
@@ -1462,10 +1463,10 @@
         .px-deadline-item:first-child { padding-top: 0; }
 
         .px-deadline-icon-col {
-            width: 38px;
-            height: 38px;
+            width: 32px;
+            height: 32px;
             background: rgba(230, 162, 60, 0.12);
-            border-radius: 11px;
+            border-radius: 9px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -1474,15 +1475,15 @@
         }
 
         .px-deadline-icon-col .material-symbols-outlined {
-            font-size: 18px;
+            font-size: 16px;
             color: var(--phoenix-amber);
         }
 
         .px-deadline-body { flex: 1; min-width: 0; }
 
         .px-deadline-title {
-            font-size: 13.5px;
-            font-weight: 700;
+            font-size: 12.5px;
+            font-weight: 650;
             color: var(--phoenix-navy);
             white-space: nowrap;
             overflow: hidden;
@@ -1490,40 +1491,38 @@
         }
 
         .px-deadline-meta {
-            font-size: 11.5px;
+            font-size: 10.5px;
             color: var(--phoenix-muted);
-            margin-top: 2px;
+            margin-top: 1px;
         }
 
         .px-deadline-badge {
             display: inline-flex;
             align-items: center;
-            padding: 2px 8px;
+            padding: 1px 7px;
             border-radius: var(--phoenix-pill);
-            font-size: 10.5px;
+            font-size: 9.5px;
             font-weight: 605;
-            margin-top: 6px;
+            margin-top: 4px;
         }
 
         .badge-today    { background: rgba(229, 115, 115, 0.12); color: var(--phoenix-coral); }
         .badge-tomorrow { background: rgba(230, 162, 60, 0.12); color: var(--phoenix-amber); }
         .badge-upcoming { background: rgba(31, 95, 91, 0.1); color: var(--phoenix-teal); }
 
-        /* Needs Attention */
+        /* Needs Attention Card */
         .px-attention-card {
-            padding: 22px 20px;
-            border: 1px solid rgba(229, 115, 115, 0.22) !important;
-            background: linear-gradient(135deg, rgba(229, 115, 115, 0.08) 0%, rgba(229, 115, 115, 0.03) 100%);
-            box-shadow: 
-                0 4px 12px rgba(229, 115, 115, 0.02),
-                inset 0 1px 0 rgba(255, 255, 255, 0.6);
+            padding: 22px 24px;
+            background: #FFFFFF;
+            border: 1px solid rgba(0, 0, 0, 0.07);
+            border-radius: 18px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+            transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
         }
 
         .px-attention-card:hover {
-            border-color: rgba(229, 115, 115, 0.45) !important;
-            box-shadow: 
-                0 12px 24px rgba(229, 115, 115, 0.08),
-                inset 0 1px 0 rgba(255, 255, 255, 0.8);
+            border-color: rgba(31, 95, 91, 0.2);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.05);
         }
 
         .px-attention-header {
@@ -1814,54 +1813,71 @@
         }
 
         /* =====================================================
-           ATTENTION FEED ITEMS (Compact rows with left urgency bars)
+           ATTENTION FEED ITEMS (Compact professional rows)
            ===================================================== */
         .px-alert-item {
             display: flex;
-            align-items: flex-start;
-            gap: 12px;
-            padding: 14px 16px;
-            background: rgba(255, 255, 255, 0.45);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            border-radius: 14px;
+            align-items: center;
+            justify-content: space-between;
+            gap: 14px;
+            padding: 12px 16px;
+            background: #F8FAFC;
+            border: 1px solid #E2E8F0;
+            border-radius: 12px;
             margin-bottom: 8px;
-            transition: all 0.2s ease;
+            transition: all 0.18s ease;
             position: relative;
             overflow: hidden;
         }
         .px-alert-item:last-child { margin-bottom: 0; }
         .px-alert-item:hover {
-            background: rgba(255, 255, 255, 0.7);
-            transform: translateX(3px);
-            box-shadow: 0 4px 14px rgba(0,0,0,0.05);
+            background: #FFFFFF;
+            border-color: rgba(31, 95, 91, 0.25);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
         }
 
-        /* Left urgency bar */
+        /* Left status indicator */
         .px-alert-item::before {
             content: '';
             position: absolute;
             left: 0;
             top: 0;
             bottom: 0;
-            width: 4px;
-            border-radius: 4px 0 0 4px;
+            width: 3.5px;
+            border-radius: 3px 0 0 3px;
         }
         .px-alert-item.urgency-red::before    { background: var(--phoenix-coral); }
         .px-alert-item.urgency-orange::before { background: var(--phoenix-amber); }
-        .px-alert-item.urgency-yellow::before { background: #EAB308; }
+        .px-alert-item.urgency-yellow::before { background: #2A7A74; }
 
-        .px-alert-dot {
-            font-size: 14px;
-            margin-top: 2px;
-            flex-shrink: 0;
-        }
         .px-alert-body {
             flex: 1;
             min-width: 0;
         }
+        .px-alert-title-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .px-alert-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 2px 7px;
+            border-radius: 4px;
+            font-size: 9.5px;
+            font-weight: 700;
+            letter-spacing: 0.03em;
+            text-transform: uppercase;
+            flex-shrink: 0;
+        }
+        .px-alert-badge.badge-pastdue { background: rgba(229, 115, 115, 0.12); color: var(--phoenix-coral); }
+        .px-alert-badge.badge-today   { background: rgba(230, 162, 60, 0.12); color: var(--phoenix-amber); }
+        .px-alert-badge.badge-high    { background: rgba(31, 95, 91, 0.1); color: var(--phoenix-teal); }
+
         .px-alert-task-name {
             font-size: 13px;
-            font-weight: 700;
+            font-weight: 650;
             color: var(--phoenix-navy);
             white-space: nowrap;
             overflow: hidden;
@@ -1871,30 +1887,56 @@
             font-size: 11.5px;
             color: var(--phoenix-muted);
             margin-top: 2px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
         }
         .px-alert-actions {
             flex-shrink: 0;
             display: flex;
             align-items: center;
+            gap: 8px;
         }
+        .px-btn-view-task {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 5px 11px;
+            font-family: 'Poppins', sans-serif;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--phoenix-teal);
+            background: rgba(31, 95, 91, 0.06);
+            border: 1px solid rgba(31, 95, 91, 0.18);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+        .px-btn-view-task:hover {
+            background: rgba(31, 95, 91, 0.14);
+            border-color: var(--phoenix-teal);
+            transform: translateY(-1px);
+        }
+        .px-btn-view-task .material-symbols-outlined { font-size: 14px; }
+
         .px-btn-remind {
             display: inline-flex;
             align-items: center;
             gap: 4px;
-            padding: 5px 12px;
+            padding: 5px 11px;
             font-family: 'Poppins', sans-serif;
             font-size: 11px;
-            font-weight: 650;
+            font-weight: 600;
             color: var(--phoenix-coral);
             background: rgba(229, 115, 115, 0.08);
-            border: 1.5px solid rgba(229, 115, 115, 0.2);
-            border-radius: 10px;
+            border: 1px solid rgba(229, 115, 115, 0.22);
+            border-radius: 8px;
             cursor: pointer;
-            transition: all 0.18s ease;
+            transition: all 0.15s ease;
         }
         .px-btn-remind:hover {
-            background: rgba(229, 115, 115, 0.16);
-            border-color: rgba(229, 115, 115, 0.4);
+            background: rgba(229, 115, 115, 0.18);
+            border-color: rgba(229, 115, 115, 0.45);
             transform: translateY(-1px);
         }
         .px-btn-remind .material-symbols-outlined { font-size: 14px; }
@@ -2134,6 +2176,650 @@
             color: var(--phoenix-muted);
         }
 
+        /* ==========================================================================
+           PHOENIX - TASK DETAILS CENTERED MODAL & COMMENTS / ACTIVITY STYLES
+           ========================================================================== */
+
+        body.px-modal-open {
+            overflow: hidden !important;
+        }
+
+        /* Modal Backdrop Overlay (z-index: 9990) */
+        .px-task-modal-backdrop {
+            position: fixed !important;
+            inset: 0 !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            background: rgba(15, 23, 42, 0.45) !important;
+            backdrop-filter: blur(8px) !important;
+            -webkit-backdrop-filter: blur(8px) !important;
+            z-index: 9990 !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            padding: 20px !important;
+            opacity: 0;
+            pointer-events: none;
+            visibility: hidden;
+            transition: opacity 0.22s ease, visibility 0.22s ease;
+        }
+        .px-task-modal-backdrop.active {
+            opacity: 1 !important;
+            pointer-events: auto !important;
+            visibility: visible !important;
+        }
+
+        /* Modal Box (z-index: 9991) */
+        .px-task-modal-card {
+            background: #FFFFFF !important;
+            border-radius: 20px !important;
+            width: 100% !important;
+            max-width: 660px !important;
+            max-height: 88vh !important;
+            display: flex !important;
+            flex-direction: column !important;
+            overflow: hidden !important;
+            box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.2), 0 10px 25px -5px rgba(0, 0, 0, 0.08) !important;
+            border: 1px solid rgba(0, 0, 0, 0.08) !important;
+            transform: scale(0.95) translateY(12px);
+            transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1) !important;
+        }
+        .px-task-modal-backdrop.active .px-task-modal-card {
+            transform: scale(1) translateY(0);
+        }
+
+        /* Modal Header */
+        .px-tmodal-header {
+            padding: 20px 24px 16px;
+            background: #FFFFFF;
+            border-bottom: 1px solid #E2E8F0;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            flex-shrink: 0;
+        }
+        .px-tmodal-header-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .px-tmodal-kicker {
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            color: #1F5F5B;
+            text-transform: uppercase;
+        }
+        .px-tmodal-close-btn {
+            background: #F1F5F9;
+            border: none;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: #475569;
+            transition: all 0.15s ease;
+        }
+        .px-tmodal-close-btn:hover {
+            background: #E2E8F0;
+            color: #0F172A;
+            transform: scale(1.05);
+        }
+
+        .px-tmodal-title-row {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 14px;
+        }
+        .px-tmodal-title {
+            font-size: 18.5px;
+            font-weight: 700;
+            color: #1F2937;
+            line-height: 1.35;
+            margin: 0;
+            flex: 1;
+        }
+        .px-tmodal-badges {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-shrink: 0;
+        }
+
+        /* Badges */
+        .px-badge-tag {
+            display: inline-flex;
+            align-items: center;
+            padding: 3px 9px;
+            border-radius: 6px;
+            font-size: 10.5px;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+        .px-badge-high { background: #FEF3C7; color: #92400E; }
+        .px-badge-medium { background: #E0F2FE; color: #0369A1; }
+        .px-badge-low { background: #F1F5F9; color: #475569; }
+
+        .px-badge-assigned { background: #F1F5F9; color: #475569; }
+        .px-badge-progress { background: #FEF3C7; color: #B45309; }
+        .px-badge-completed { background: #E6F4F1; color: #1F5F5B; }
+        .px-badge-pastdue { background: #FFE4E6; color: #E11D48; }
+
+        /* Modal Scrollable Body */
+        .px-tmodal-body {
+            overflow-y: auto;
+            padding: 20px 24px 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+        }
+
+        /* Metadata Grid: 2 columns */
+        .px-tmodal-meta-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            background: #F8FAFC;
+            border: 1px solid #E2E8F0;
+            border-radius: 12px;
+            padding: 14px 16px;
+        }
+        .px-tmodal-meta-item {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+        .px-tmodal-meta-label {
+            font-size: 10.5px;
+            font-weight: 700;
+            color: #64748B;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .px-tmodal-meta-val {
+            font-size: 13px;
+            font-weight: 650;
+            color: #1F2937;
+        }
+        .px-tmodal-meta-sub {
+            font-size: 11.5px;
+            color: #64748B;
+            margin-top: 1px;
+        }
+
+        /* Section layout */
+        .px-tmodal-section {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .px-tmodal-section-title {
+            font-size: 11px;
+            font-weight: 700;
+            color: #64748B;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .px-tmodal-count-pill {
+            font-size: 11px;
+            font-weight: 700;
+            color: #1F5F5B;
+            background: rgba(31, 95, 91, 0.1);
+            padding: 2px 8px;
+            border-radius: 999px;
+        }
+
+        .px-tmodal-desc-text {
+            font-size: 13px;
+            line-height: 1.6;
+            color: #334155;
+            white-space: pre-line;
+            background: #FFFFFF;
+            border: 1px solid #E2E8F0;
+            border-radius: 10px;
+            padding: 12px 14px;
+        }
+
+        .px-tmodal-divider {
+            border: none;
+            border-top: 1px solid #E2E8F0;
+            margin: 2px 0;
+        }
+
+        /* Comments Feed */
+        .px-tmodal-comments-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .px-comment-item {
+            display: flex;
+            gap: 10px;
+            background: #FFFFFF;
+            border: 1px solid #E2E8F0;
+            border-radius: 10px;
+            padding: 12px;
+            position: relative;
+            transition: border-color 0.15s ease;
+        }
+        .px-comment-item:hover {
+            border-color: #CBD5E1;
+        }
+
+        .px-comment-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: #1F5F5B;
+            color: #FFFFFF;
+            font-size: 11.5px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .px-comment-avatar.emp-avatar {
+            background: #2A7A74;
+        }
+
+        .px-comment-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            min-width: 0;
+        }
+
+        .px-comment-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+        }
+
+        .px-comment-user-info {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .px-comment-user-name {
+            font-size: 12.5px;
+            font-weight: 700;
+            color: #1F2937;
+        }
+        .px-comment-role-tag {
+            font-size: 9.5px;
+            font-weight: 600;
+            padding: 1px 6px;
+            border-radius: 4px;
+            background: #F1F5F9;
+            color: #64748B;
+            text-transform: uppercase;
+        }
+
+        .px-comment-time {
+            font-size: 11px;
+            color: #94A3B8;
+        }
+
+        .px-comment-text {
+            font-size: 12.5px;
+            line-height: 1.5;
+            color: #334155;
+            margin-top: 2px;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        /* Comment Action Menu (•••) */
+        .px-comment-menu-wrap {
+            position: relative;
+        }
+        .px-comment-menu-btn {
+            background: transparent;
+            border: none;
+            color: #94A3B8;
+            cursor: pointer;
+            padding: 2px 4px;
+            border-radius: 4px;
+            font-size: 15px;
+            line-height: 1;
+        }
+        .px-comment-menu-btn:hover {
+            color: #1F2937;
+            background: #F1F5F9;
+        }
+        .px-comment-dropdown {
+            position: absolute;
+            right: 0;
+            top: 22px;
+            background: #FFFFFF;
+            border: 1px solid #E2E8F0;
+            border-radius: 8px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.12);
+            z-index: 10;
+            display: none;
+            min-width: 100px;
+            overflow: hidden;
+        }
+        .px-comment-dropdown.show {
+            display: block;
+        }
+        .px-comment-dropdown-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 7px 10px;
+            font-size: 11.5px;
+            font-weight: 500;
+            color: #475569;
+            cursor: pointer;
+            background: transparent;
+            border: none;
+            width: 100%;
+            text-align: left;
+        }
+        .px-comment-dropdown-item:hover {
+            background: #F8FAFC;
+            color: #0F172A;
+        }
+        .px-comment-dropdown-item.delete:hover {
+            background: #FEF2F2;
+            color: #E11D48;
+        }
+
+        /* Inline Comment Edit Form */
+        .px-comment-edit-box {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: 4px;
+        }
+        .px-comment-edit-textarea {
+            width: 100%;
+            padding: 8px 10px;
+            border: 1px solid #1F5F5B;
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 12.5px;
+            resize: vertical;
+            min-height: 52px;
+            outline: none;
+        }
+        .px-comment-edit-actions {
+            display: flex;
+            gap: 6px;
+            justify-content: flex-end;
+        }
+
+        /* Comment Input Area */
+        .px-tmodal-comment-form {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            background: #F8FAFC;
+            border: 1px solid #E2E8F0;
+            border-radius: 12px;
+            padding: 12px 14px;
+        }
+        .px-tmodal-form-label {
+            font-size: 11px;
+            font-weight: 650;
+            color: #64748B;
+        }
+        .px-tmodal-comment-input {
+            width: 100%;
+            border: 1px solid #CBD5E1;
+            border-radius: 8px;
+            background: #FFFFFF;
+            font-family: 'Poppins', sans-serif;
+            font-size: 12.5px;
+            color: #1F2937;
+            padding: 8px 10px;
+            outline: none;
+            resize: vertical;
+            min-height: 50px;
+            transition: border-color 0.15s ease;
+        }
+        .px-tmodal-comment-input:focus {
+            border-color: #1F5F5B;
+        }
+        .px-tmodal-comment-input::placeholder {
+            color: #94A3B8;
+        }
+        .px-tmodal-comment-footer {
+            display: flex;
+            justify-content: flex-end;
+        }
+
+        .px-btn-post-comment {
+            background: #1F5F5B;
+            color: #FFFFFF;
+            border: none;
+            border-radius: 8px;
+            padding: 6px 14px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            transition: background 0.15s ease;
+        }
+        .px-btn-post-comment:hover {
+            background: #174744;
+        }
+        .px-btn-post-comment:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        .px-btn-post-comment .material-symbols-outlined { font-size: 14px; }
+
+        /* Activity Timeline */
+        .px-tmodal-timeline {
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+            position: relative;
+            padding-left: 18px;
+            border-left: 2px solid #E2E8F0;
+            margin-left: 8px;
+        }
+        .px-tmodal-activity-item {
+            position: relative;
+            padding-bottom: 12px;
+        }
+        .px-tmodal-activity-item:last-child {
+            padding-bottom: 0;
+        }
+        .px-tmodal-activity-dot {
+            position: absolute;
+            left: -24px;
+            top: 4px;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #1F5F5B;
+            border: 2px solid #FFFFFF;
+            box-shadow: 0 0 0 1.5px rgba(31, 95, 91, 0.25);
+        }
+        .px-tmodal-activity-desc {
+            font-size: 12px;
+            font-weight: 600;
+            color: #334155;
+            line-height: 1.4;
+        }
+        .px-tmodal-activity-time {
+            font-size: 10.5px;
+            color: #94A3B8;
+            margin-top: 1px;
+        }
+
+        /* Recent Team Activity Card on Manager Dashboard */
+        .px-recent-activity-card {
+            margin-top: 0;
+            padding: 18px 18px;
+        }
+        .px-recent-activity-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .px-recent-activity-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 9px 11px;
+            border-radius: 10px;
+            background: #F8FAFC;
+            border: 1px solid #F1F5F9;
+            cursor: pointer;
+            transition: background 0.15s ease, border-color 0.15s ease;
+        }
+        .px-recent-activity-item:hover {
+            background: #F1F5F9;
+            border-color: #E2E8F0;
+        }
+        .px-recent-activity-icon {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: #E6F4F1;
+            color: #1F5F5B;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            font-size: 15px;
+        }
+        .px-recent-activity-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 1px;
+            min-width: 0;
+        }
+        .px-recent-activity-actor {
+            font-size: 12px;
+            font-weight: 700;
+            color: #1F2937;
+        }
+        .px-recent-activity-text {
+            font-size: 11.5px;
+            color: #475569;
+            line-height: 1.35;
+        }
+        .px-recent-activity-time {
+            font-size: 10.5px;
+            color: #94A3B8;
+        }
+
+        /* Delete Confirmation Modal Overlay (z-index: 10000) */
+        .px-modal-overlay {
+            position: fixed !important;
+            inset: 0 !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            background: rgba(15, 23, 42, 0.55) !important;
+            backdrop-filter: blur(4px) !important;
+            -webkit-backdrop-filter: blur(4px) !important;
+            z-index: 10000 !important;
+            opacity: 0;
+            pointer-events: none;
+            visibility: hidden;
+            transition: opacity 0.2s ease, visibility 0.2s ease;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            padding: 16px !important;
+        }
+        .px-modal-overlay.active {
+            opacity: 1 !important;
+            pointer-events: auto !important;
+            visibility: visible !important;
+        }
+
+        /* Delete Confirmation Modal Box */
+        .px-modal-box {
+            background: #FFFFFF !important;
+            border-radius: 16px !important;
+            max-width: 360px !important;
+            width: 90% !important;
+            padding: 22px 24px !important;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25) !important;
+            z-index: 10001 !important;
+            transform: scale(0.95);
+            transition: transform 0.2s ease;
+        }
+        .px-modal-overlay.active .px-modal-box {
+            transform: scale(1);
+        }
+        .px-modal-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: #1F2937;
+            margin-bottom: 6px;
+        }
+        .px-modal-msg {
+            font-size: 13px;
+            color: #64748B;
+            line-height: 1.45;
+            margin-bottom: 18px;
+        }
+        .px-modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+        }
+        .px-modal-btn-cancel {
+            background: #F1F5F9;
+            color: #475569;
+            border: none;
+            border-radius: 8px;
+            padding: 7px 14px;
+            font-size: 12.5px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.15s ease;
+        }
+        .px-modal-btn-cancel:hover {
+            background: #E2E8F0;
+        }
+        .px-modal-btn-delete {
+            background: #E11D48;
+            color: #FFFFFF;
+            border: none;
+            border-radius: 8px;
+            padding: 7px 14px;
+            font-size: 12.5px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.15s ease;
+        }
+        .px-modal-btn-delete:hover {
+            background: #BE123C;
+        }
+
+        /* Mobile Responsive */
+        @media (max-width: 640px) {
+            .px-tmodal-meta-grid {
+                grid-template-columns: 1fr;
+            }
+            .px-tmodal-title-row {
+                flex-direction: column;
+                gap: 8px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -2488,11 +3174,11 @@
     </div>
 
     <!-- ============================================================
-         TEAM PERFORMANCE + UPCOMING DEADLINES ROW
+         TEAM PERFORMANCE + UPCOMING DEADLINES + ACTIVITY ROW
          ============================================================ -->
     <div class="px-section-grid">
 
-        <!-- Team Performance Card -->
+        <!-- Team Performance Card (Left Column) -->
         <div class="px-card px-team-card">
             <div class="px-team-header">
                 <div>
@@ -2530,21 +3216,43 @@
             </div>
         </div>
 
-        <!-- Upcoming Deadlines Card -->
-        <div class="px-card px-deadlines-card">
-            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;">
-                <div>
-                    <h2 class="px-section-title">Upcoming Deadlines</h2>
-                    <p class="px-section-sub" style="margin-top:2px;">Next tasks due soonest.</p>
+        <!-- Right Column: Deadlines (compact) + Recent Activity stacked -->
+        <div class="px-right-col">
+
+            <!-- Upcoming Deadlines Card (compact) -->
+            <div class="px-card px-deadlines-card">
+                <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
+                    <div>
+                        <h2 class="px-section-title" style="font-size:15.5px;">Upcoming Deadlines</h2>
+                        <p class="px-section-sub" style="margin-top:1px; font-size:11.5px;">Next tasks due soonest.</p>
+                    </div>
+                    <button type="button" id="openCalendarBtn" class="px-btn-outline" style="padding: 5px 10px; font-size:11px;">
+                        <span class="material-symbols-outlined" style="font-size:15px;">calendar_month</span>
+                        Calendar
+                    </button>
                 </div>
-                <button type="button" id="openCalendarBtn" class="px-btn-outline" style="padding: 6px 12px; font-size:11.5px;">
-                    <span class="material-symbols-outlined">calendar_month</span>
-                    View Calendar
-                </button>
+                <div id="upcomingDeadlinesContainer" class="px-timeline-container" style="max-height: 160px; overflow-y: auto;">
+                    <!-- Dynamic content from manager.js -->
+                </div>
             </div>
-            <div id="upcomingDeadlinesContainer" class="px-timeline-container">
-                <!-- Dynamic content from manager.js -->
+
+            <!-- Recent Team Activity Card -->
+            <div class="px-card px-recent-activity-card">
+                <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
+                    <div>
+                        <h2 class="px-section-title" style="font-size:15.5px;">Recent Team Activity</h2>
+                        <p class="px-section-sub" style="margin-top:1px; font-size:11.5px;">Latest updates and task comments across team.</p>
+                    </div>
+                    <button type="button" id="refreshActivityBtn" class="px-btn-outline" style="padding: 5px 10px; font-size:11px;">
+                        <span class="material-symbols-outlined" style="font-size:14px;">refresh</span>
+                        Refresh
+                    </button>
+                </div>
+                <div id="recentActivityContainer" class="px-recent-activity-list" style="max-height: 220px; overflow-y: auto;">
+                    <div style="text-align:center; padding:16px; color:#94A3B8; font-size:12.5px;">Loading recent team activity...</div>
+                </div>
             </div>
+
         </div>
 
     </div>
@@ -2552,12 +3260,14 @@
     <!-- ============================================================
          NEEDS ATTENTION ROW (Priority Alert Feed)
          ============================================================ -->
-    <div class="px-card px-attention-card" id="attentionCard">
         <div class="px-attention-header-row" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:16px;">
-            <div class="px-attention-header" style="margin-bottom:0;">
-                <span class="material-symbols-outlined">error_outline</span>
-                <h2 class="px-attention-title">Needs Attention</h2>
-                <span id="attentionCount" class="px-attention-count-badge">0</span>
+            <div>
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <span class="material-symbols-outlined" style="color:var(--phoenix-coral); font-size:20px;">error_outline</span>
+                    <h2 class="px-section-title" style="margin:0; font-size:16.5px;">Needs Attention</h2>
+                    <span id="attentionCount" class="px-attention-count-badge">0</span>
+                </div>
+                <p class="px-section-sub" style="margin-top:2px; font-size:12px;">Tasks requiring manager action.</p>
             </div>
             <div class="px-attention-filters">
                 <button type="button" class="px-filter-btn active" data-filter="all">All</button>
@@ -2793,6 +3503,111 @@
         }
     });
 </script>
+
+<!-- ============================================================
+     TASK DETAILS CENTERED MODAL
+     ============================================================ -->
+<div id="pxTaskModalBackdrop" class="px-task-modal-backdrop">
+    <div id="pxTaskModal" class="px-task-modal-card" role="dialog" aria-modal="true" aria-labelledby="pxModalTitle">
+        <!-- HEADER -->
+        <div class="px-tmodal-header">
+            <div class="px-tmodal-header-top">
+                <span class="px-tmodal-kicker">TASK DETAILS</span>
+                <button type="button" id="pxCloseTaskModalBtn" class="px-tmodal-close-btn" title="Close">
+                    <span class="material-symbols-outlined" style="font-size: 18px;">close</span>
+                </button>
+            </div>
+            <div class="px-tmodal-title-row">
+                <h2 id="pxModalTitle" class="px-tmodal-title">Task Title</h2>
+                <div class="px-tmodal-badges">
+                    <span id="pxModalStatusBadge" class="px-badge-tag px-badge-progress">IN PROGRESS</span>
+                    <span id="pxModalPriorityBadge" class="px-badge-tag px-badge-high">HIGH</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- SCROLLABLE BODY -->
+        <div class="px-tmodal-body">
+            <!-- Metadata 2-Column Grid -->
+            <div class="px-tmodal-meta-grid">
+                <div class="px-tmodal-meta-item">
+                    <span class="px-tmodal-meta-label">ASSIGNED TO</span>
+                    <span id="pxModalAssignee" class="px-tmodal-meta-val">—</span>
+                    <span id="pxModalAssigneeEmail" class="px-tmodal-meta-sub">—</span>
+                </div>
+                <div class="px-tmodal-meta-item">
+                    <span class="px-tmodal-meta-label">ASSIGNED BY</span>
+                    <span id="pxModalAssignedBy" class="px-tmodal-meta-val">Prapti Chavan</span>
+                    <span class="px-tmodal-meta-sub">Project Manager</span>
+                </div>
+                <div class="px-tmodal-meta-item">
+                    <span class="px-tmodal-meta-label">DEADLINE</span>
+                    <span id="pxModalDeadline" class="px-tmodal-meta-val">—</span>
+                    <span class="px-tmodal-meta-sub">IST (GMT+5:30)</span>
+                </div>
+                <div class="px-tmodal-meta-item">
+                    <span class="px-tmodal-meta-label">STATUS LIFECYCLE</span>
+                    <span id="pxModalLifecycleText" class="px-tmodal-meta-val">Assigned → In Progress</span>
+                    <span id="pxModalLifecycleSub" class="px-tmodal-meta-sub">Standard Lifecycle</span>
+                </div>
+            </div>
+
+            <!-- TASK DESCRIPTION -->
+            <div class="px-tmodal-section">
+                <div class="px-tmodal-section-title">TASK DESCRIPTION</div>
+                <div id="pxModalDescription" class="px-tmodal-desc-text">—</div>
+            </div>
+
+            <hr class="px-tmodal-divider">
+
+            <!-- COMMENTS -->
+            <div class="px-tmodal-section">
+                <div class="px-tmodal-section-title">
+                    <span>COMMENTS</span>
+                    <span id="pxModalCommentsCount" class="px-tmodal-count-pill">0</span>
+                </div>
+                
+                <div id="pxModalCommentsList" class="px-tmodal-comments-list">
+                    <!-- Comments rendered dynamically -->
+                </div>
+
+                <!-- ADD COMMENT FORM -->
+                <div class="px-tmodal-comment-form">
+                    <div class="px-tmodal-form-label">Add a comment...</div>
+                    <textarea id="pxNewCommentInput" class="px-tmodal-comment-input" placeholder="Write a comment..." rows="2"></textarea>
+                    <div class="px-tmodal-comment-footer">
+                        <button type="button" id="pxSendCommentBtn" class="px-btn-post-comment">
+                            <span class="material-symbols-outlined">send</span>
+                            <span>Post Comment</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <hr class="px-tmodal-divider">
+
+            <!-- ACTIVITY TIMELINE -->
+            <div class="px-tmodal-section">
+                <div class="px-tmodal-section-title">ACTIVITY</div>
+                <div id="pxModalActivityTimeline" class="px-tmodal-timeline">
+                    <!-- Activity rendered dynamically -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Comment Delete Confirmation Modal -->
+<div id="pxDeleteCommentModal" class="px-modal-overlay">
+    <div class="px-modal-box">
+        <div class="px-modal-title">Delete comment?</div>
+        <div class="px-modal-msg">This comment will be permanently removed.</div>
+        <div class="px-modal-actions">
+            <button type="button" id="pxCancelDeleteCommentBtn" class="px-modal-btn-cancel">Cancel</button>
+            <button type="button" id="pxConfirmDeleteCommentBtn" class="px-modal-btn-delete">Delete</button>
+        </div>
+    </div>
+</div>
 
 </body>
 </html>

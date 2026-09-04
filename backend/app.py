@@ -1,9 +1,15 @@
-from flask import Flask, request, jsonify
-from flask_cors import CORS
-import json
 import os
+import sys
+import json
 import sqlite3
 from datetime import datetime
+from flask import Flask, request, jsonify
+from flask_cors import CORS
+
+BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
+if BACKEND_DIR not in sys.path:
+    sys.path.insert(0, BACKEND_DIR)
+
 from email_service import send_task_email
 from ai_email_service import generate_task_email
 
@@ -16,7 +22,7 @@ DB_PATH = os.path.join(BACKEND_DIR, 'phoenix.db')
 
 
 def init_db():
-    """Initializes the SQLite database, creates tasks table, and handles migration for assigned_by."""
+    """Initializes the SQLite database, creates tasks, meetings, task_comments, and task_activity tables."""
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute('''
@@ -31,11 +37,14 @@ def init_db():
     ''')
     conn.commit()
 
-    # Migration check: Ensure assigned_by column exists for existing tables
+    # Migration check: Ensure assigned_by and progress columns exist for existing tables
     cursor.execute("PRAGMA table_info(tasks)")
     columns = [col[1] for col in cursor.fetchall()]
     if 'assigned_by' not in columns:
         cursor.execute("ALTER TABLE tasks ADD COLUMN assigned_by TEXT NOT NULL DEFAULT 'Prapti Chavan'")
+        conn.commit()
+    if 'progress' not in columns:
+        cursor.execute("ALTER TABLE tasks ADD COLUMN progress INTEGER DEFAULT 0")
         conn.commit()
 
     cursor.execute('''
@@ -53,11 +62,99 @@ def init_db():
     ''')
     conn.commit()
 
+    # Create task_comments table
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS task_comments (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            task_id INTEGER NOT NULL,
+            user_name TEXT NOT NULL,
+            user_email TEXT NOT NULL,
+            user_role TEXT NOT NULL,
+            comment TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            updated_at TEXT,
+            FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE
+        )
+    ''')
+    conn.commit()
+
+    # Create task_activity table
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS task_activity (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            task_id INTEGER NOT NULL,
+            actor_name TEXT NOT NULL,
+            actor_email TEXT NOT NULL,
+            actor_role TEXT NOT NULL,
+            activity_type TEXT NOT NULL,
+            activity_description TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            metadata TEXT,
+            FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE
+        )
+    ''')
+    conn.commit()
+
     conn.close()
 
 
 # Initialize database on startup
 init_db()
+
+
+def get_user_info(user_identifier):
+    """Finds user info from employees.json by email or name."""
+    if not os.path.exists(DATA_PATH) or not user_identifier:
+        return None
+
+    with open(DATA_PATH, 'r') as f:
+        data = json.load(f)
+
+    clean_id = str(user_identifier).strip().lower()
+
+    for pm in data.get('project_managers', []):
+        pm_email = pm.get('email', '').strip().lower()
+        pm_name = pm.get('name', '').strip().lower()
+        if clean_id == pm_email or clean_id == pm_name:
+            return {
+                'name': pm.get('name'),
+                'email': pm.get('email'),
+                'role': 'project_manager',
+                'department': pm.get('department')
+            }
+
+    for emp in data.get('employees', []):
+        emp_email = emp.get('email', '').strip().lower()
+        emp_name = emp.get('name', '').strip().lower()
+        if clean_id == emp_email or clean_id == emp_name:
+            return {
+                'name': emp.get('name'),
+                'email': emp.get('email'),
+                'role': 'employee',
+                'department': emp.get('department')
+            }
+
+    return None
+
+
+def log_activity(task_id, actor_name, actor_email, actor_role, activity_type, activity_description, metadata=None):
+    """Inserts a system activity record into task_activity table."""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        created_at = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        meta_json = json.dumps(metadata) if metadata else None
+
+        cursor.execute('''
+            INSERT INTO task_activity (task_id, actor_name, actor_email, actor_role, activity_type, activity_description, created_at, metadata)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (task_id, actor_name, actor_email, actor_role, activity_type, activity_description, created_at, meta_json))
+
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"Error logging activity: {e}")
+
 
 
 def get_employee_email(employee_name):
@@ -364,6 +461,17 @@ def assign_task():
         conn.commit()
         task_id = cursor.lastrowid
         conn.close()
+
+        # Log Task Assigned Activity
+        manager_info = get_user_info(manager_name) or {'name': manager_name, 'email': 'prapti.chavan25@gmail.com', 'role': 'project_manager'}
+        log_activity(
+            task_id,
+            manager_info['name'],
+            manager_info['email'],
+            'project_manager',
+            'TASK_ASSIGNED',
+            f"{manager_info['name']} assigned this task to {employee_name}"
+        )
     except Exception as e:
         return jsonify({
             'success': False,
@@ -383,6 +491,14 @@ def assign_task():
 
     # 5. Return success only when task stored and email sent
     if email_sent:
+        log_activity(
+            task_id,
+            manager_info['name'],
+            manager_info['email'],
+            'project_manager',
+            'EMAIL_SENT',
+            f"Task assignment email sent to {employee_name}"
+        )
         return jsonify({
             'success': True,
             'message': 'Task assigned and email sent successfully',
@@ -403,10 +519,12 @@ def get_employee_tasks(employee_name):
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         
-        cursor.execute(
-            'SELECT id, employee_name, task, deadline, status, assigned_by FROM tasks WHERE LOWER(employee_name) = LOWER(?)',
-            (employee_name.strip(),)
-        )
+        cursor.execute('''
+            SELECT t.id, t.employee_name, t.task, t.deadline, t.status, t.assigned_by, t.progress,
+                   (SELECT COUNT(*) FROM task_comments WHERE task_id = t.id) AS comment_count
+            FROM tasks t
+            WHERE LOWER(t.employee_name) = LOWER(?)
+        ''', (employee_name.strip(),))
         rows = cursor.fetchall()
         conn.close()
 
@@ -417,7 +535,9 @@ def get_employee_tasks(employee_name):
                 'task': row['task'],
                 'deadline': row['deadline'],
                 'status': row['status'],
-                'assigned_by': row['assigned_by'] if 'assigned_by' in row.keys() and row['assigned_by'] else 'Prapti Chavan'
+                'assigned_by': row['assigned_by'] if 'assigned_by' in row.keys() and row['assigned_by'] else 'Prapti Chavan',
+                'progress': row['progress'] if ('progress' in row.keys() and row['progress'] is not None) else (100 if row['status'] == 'Completed' else 0),
+                'comment_count': row['comment_count'] if 'comment_count' in row.keys() else 0
             }
             for row in rows
         ]
@@ -438,6 +558,7 @@ def update_task_status(task_id):
     data = request.get_json() or {}
     new_status = data.get('status', '').strip()
     employee_name = data.get('employee_name', '').strip()
+    actor_email = data.get('actor_email', '').strip() or data.get('user_email', '').strip()
 
     # Allowed status values
     allowed_statuses = ['Assigned', 'In Progress', 'Completed']
@@ -456,7 +577,7 @@ def update_task_status(task_id):
 
         # Check if task exists
         cursor.execute(
-            'SELECT id, employee_name, task, deadline, status, assigned_by FROM tasks WHERE id = ?',
+            'SELECT id, employee_name, task, deadline, status, assigned_by, progress FROM tasks WHERE id = ?',
             (task_id,)
         )
         task_row = cursor.fetchone()
@@ -476,20 +597,53 @@ def update_task_status(task_id):
                 'message': 'Unauthorized: Task belongs to another employee.'
             }), 403
 
-        # Update status
+        old_status = task_row['status']
+        curr_progress = task_row['progress'] if ('progress' in task_row.keys() and task_row['progress'] is not None) else 0
+
+        # Sync progress based on status change
+        new_progress = curr_progress
+        if matched_status == 'Completed':
+            new_progress = 100
+        elif matched_status == 'Assigned' and curr_progress >= 100:
+            new_progress = 0
+        elif matched_status == 'In Progress' and curr_progress == 0:
+            new_progress = 25
+
+        # Update status and progress
         cursor.execute(
-            'UPDATE tasks SET status = ? WHERE id = ?',
-            (matched_status, task_id)
+            'UPDATE tasks SET status = ?, progress = ? WHERE id = ?',
+            (matched_status, new_progress, task_id)
         )
         conn.commit()
 
         # Fetch updated task
-        cursor.execute(
-            'SELECT id, employee_name, task, deadline, status, assigned_by FROM tasks WHERE id = ?',
-            (task_id,)
-        )
+        cursor.execute('''
+            SELECT t.id, t.employee_name, t.task, t.deadline, t.status, t.assigned_by, t.progress,
+                   (SELECT COUNT(*) FROM task_comments WHERE task_id = t.id) AS comment_count
+            FROM tasks t WHERE t.id = ?
+        ''', (task_id,))
         updated_row = cursor.fetchone()
         conn.close()
+
+        # Log status transition activity
+        actor_info = get_user_info(actor_email) if actor_email else None
+        if not actor_info:
+            target_name = employee_name or task_row['employee_name']
+            actor_info = get_user_info(target_name) or {
+                'name': target_name,
+                'email': (get_employee_email(target_name) or ''),
+                'role': 'employee'
+            }
+
+        if old_status != matched_status:
+            log_activity(
+                task_id,
+                actor_info['name'],
+                actor_info['email'],
+                actor_info['role'],
+                'STATUS_CHANGED',
+                f"{actor_info['name']} changed status from {old_status} to {matched_status}"
+            )
 
         updated_task = {
             'id': updated_row['id'],
@@ -497,7 +651,9 @@ def update_task_status(task_id):
             'task': updated_row['task'],
             'deadline': updated_row['deadline'],
             'status': updated_row['status'],
-            'assigned_by': updated_row['assigned_by'] if 'assigned_by' in updated_row.keys() and updated_row['assigned_by'] else 'Prapti Chavan'
+            'assigned_by': updated_row['assigned_by'] if 'assigned_by' in updated_row.keys() and updated_row['assigned_by'] else 'Prapti Chavan',
+            'progress': updated_row['progress'] if ('progress' in updated_row.keys() and updated_row['progress'] is not None) else (100 if updated_row['status'] == 'Completed' else 0),
+            'comment_count': updated_row['comment_count'] if 'comment_count' in updated_row.keys() else 0
         }
 
         return jsonify({
@@ -510,6 +666,120 @@ def update_task_status(task_id):
         return jsonify({
             'success': False,
             'message': f'Error updating task status: {str(e)}'
+        }), 500
+
+
+@app.route('/tasks/<int:task_id>/progress', methods=['PATCH'])
+def update_task_progress(task_id):
+    data = request.get_json() or {}
+    progress_val = data.get('progress')
+    employee_name = data.get('employee_name', '').strip()
+    actor_email = data.get('actor_email', '').strip() or data.get('user_email', '').strip()
+
+    try:
+        progress_int = int(progress_val)
+        if progress_int not in [0, 25, 50, 75, 100]:
+            return jsonify({'success': False, 'message': 'Progress must be one of: 0, 25, 50, 75, 100'}), 400
+    except (ValueError, TypeError):
+        return jsonify({'success': False, 'message': 'Invalid progress value'}), 400
+
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+
+        cursor.execute('SELECT id, employee_name, task, deadline, status, assigned_by, progress FROM tasks WHERE id = ?', (task_id,))
+        task_row = cursor.fetchone()
+
+        if not task_row:
+            conn.close()
+            return jsonify({'success': False, 'message': 'Task not found'}), 404
+
+        if employee_name and task_row['employee_name'].strip().lower() != employee_name.lower():
+            conn.close()
+            return jsonify({'success': False, 'message': 'Unauthorized: Task belongs to another employee.'}), 403
+
+        old_status = task_row['status']
+        old_progress = task_row['progress'] if ('progress' in task_row.keys() and task_row['progress'] is not None) else (100 if old_status == 'Completed' else 0)
+
+        # Automatic status transition based on progress:
+        # Assigned -> In Progress if progress > 0
+        # Completed if progress == 100
+        # In Progress if status was Completed and progress < 100
+        new_status = old_status
+        if progress_int == 100:
+            new_status = 'Completed'
+        elif progress_int > 0 and old_status == 'Assigned':
+            new_status = 'In Progress'
+        elif progress_int < 100 and old_status == 'Completed':
+            new_status = 'In Progress'
+        elif progress_int == 0 and old_status == 'Completed':
+            new_status = 'Assigned'
+
+        cursor.execute(
+            'UPDATE tasks SET progress = ?, status = ? WHERE id = ?',
+            (progress_int, new_status, task_id)
+        )
+        conn.commit()
+
+        cursor.execute('''
+            SELECT t.id, t.employee_name, t.task, t.deadline, t.status, t.assigned_by, t.progress,
+                   (SELECT COUNT(*) FROM task_comments WHERE task_id = t.id) AS comment_count
+            FROM tasks t WHERE t.id = ?
+        ''', (task_id,))
+        updated_row = cursor.fetchone()
+        conn.close()
+
+        # Log activity
+        actor_info = get_user_info(actor_email) if actor_email else None
+        if not actor_info:
+            target_name = employee_name or task_row['employee_name']
+            actor_info = get_user_info(target_name) or {
+                'name': target_name,
+                'email': (get_employee_email(target_name) or ''),
+                'role': 'employee'
+            }
+
+        log_activity(
+            task_id,
+            actor_info['name'],
+            actor_info['email'],
+            actor_info['role'],
+            'PROGRESS_UPDATED',
+            f"{actor_info['name']} updated progress to {progress_int}%"
+        )
+
+        if old_status != new_status:
+            log_activity(
+                task_id,
+                actor_info['name'],
+                actor_info['email'],
+                actor_info['role'],
+                'STATUS_CHANGED',
+                f"{actor_info['name']} changed status from {old_status} to {new_status}"
+            )
+
+        updated_task = {
+            'id': updated_row['id'],
+            'employee_name': updated_row['employee_name'],
+            'task': updated_row['task'],
+            'deadline': updated_row['deadline'],
+            'status': updated_row['status'],
+            'assigned_by': updated_row['assigned_by'] if 'assigned_by' in updated_row.keys() and updated_row['assigned_by'] else 'Prapti Chavan',
+            'progress': updated_row['progress'],
+            'comment_count': updated_row['comment_count'] if 'comment_count' in updated_row.keys() else 0
+        }
+
+        return jsonify({
+            'success': True,
+            'message': f'Task progress updated to {progress_int}%',
+            'task': updated_task
+        }), 200
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Error updating task progress: {str(e)}'
         }), 500
 
 
@@ -597,6 +867,377 @@ def assign_meeting():
             'success': False,
             'message': f'Failed to store meeting: {str(e)}'
         }), 500
+
+
+@app.route('/tasks/id/<int:task_id>', methods=['GET'])
+def get_task_by_id(task_id):
+    """Returns details for a single task."""
+    user_email = request.args.get('user_email', '').strip()
+    user_info = get_user_info(user_email)
+
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT t.id, t.employee_name, t.task, t.deadline, t.status, t.assigned_by, t.progress,
+                   (SELECT COUNT(*) FROM task_comments WHERE task_id = t.id) AS comment_count
+            FROM tasks t WHERE t.id = ?
+        ''', (task_id,))
+        row = cursor.fetchone()
+        conn.close()
+
+        if not row:
+            return jsonify({'success': False, 'message': 'Task not found'}), 404
+
+        task_data = {
+            'id': row['id'],
+            'employee_name': row['employee_name'],
+            'task': row['task'],
+            'deadline': row['deadline'],
+            'status': row['status'],
+            'assigned_by': row['assigned_by'] if 'assigned_by' in row.keys() and row['assigned_by'] else 'Prapti Chavan',
+            'progress': row['progress'] if ('progress' in row.keys() and row['progress'] is not None) else (100 if row['status'] == 'Completed' else 0),
+            'comment_count': row['comment_count'] if 'comment_count' in row.keys() else 0
+        }
+
+        # Check authorization if user_info is available
+        if user_info and user_info['role'] == 'employee':
+            emp_name = task_data['employee_name'].strip().lower()
+            u_name = user_info['name'].strip().lower()
+            u_email = user_info['email'].strip().lower()
+            emp_email = (get_employee_email(task_data['employee_name']) or '').strip().lower()
+            if u_name != emp_name and u_email != emp_email:
+                return jsonify({'success': False, 'message': 'Unauthorized access to task'}), 403
+
+        return jsonify({'success': True, 'task': task_data}), 200
+
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'Error fetching task: {str(e)}'}), 500
+
+
+@app.route('/tasks/<int:task_id>/comments', methods=['GET'])
+def get_task_comments(task_id):
+    """Returns comments for a specific task."""
+    user_email = request.args.get('user_email', '').strip()
+    user_info = get_user_info(user_email)
+
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+
+        # Check task existence
+        cursor.execute('SELECT id, employee_name FROM tasks WHERE id = ?', (task_id,))
+        task_row = cursor.fetchone()
+        if not task_row:
+            conn.close()
+            return jsonify({'success': False, 'message': 'Task not found'}), 404
+
+        # Validate employee authorization
+        if user_info and user_info['role'] == 'employee':
+            emp_name = task_row['employee_name'].strip().lower()
+            u_name = user_info['name'].strip().lower()
+            u_email = user_info['email'].strip().lower()
+            emp_email = (get_employee_email(task_row['employee_name']) or '').strip().lower()
+            if u_name != emp_name and u_email != emp_email:
+                conn.close()
+                return jsonify({'success': False, 'message': 'Unauthorized access to task comments'}), 403
+
+        cursor.execute('''
+            SELECT id, task_id, user_name, user_email, user_role, comment, created_at, updated_at
+            FROM task_comments WHERE task_id = ? ORDER BY id ASC
+        ''', (task_id,))
+        rows = cursor.fetchall()
+        conn.close()
+
+        comments = [
+            {
+                'id': r['id'],
+                'task_id': r['task_id'],
+                'user_name': r['user_name'],
+                'user_email': r['user_email'],
+                'user_role': r['user_role'],
+                'comment': r['comment'],
+                'created_at': r['created_at'],
+                'updated_at': r['updated_at']
+            }
+            for r in rows
+        ]
+
+        return jsonify({'success': True, 'comments': comments}), 200
+
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'Error fetching comments: {str(e)}'}), 500
+
+
+@app.route('/tasks/<int:task_id>/comments', methods=['POST'])
+def add_task_comment(task_id):
+    """Adds a new comment to a task."""
+    data = request.get_json() or {}
+    comment_text = data.get('comment', '').strip()
+    user_email = data.get('user_email', '').strip()
+
+    if not comment_text:
+        return jsonify({'success': False, 'message': 'Comment text cannot be empty'}), 400
+
+    user_info = get_user_info(user_email)
+    if not user_info:
+        user_name = data.get('user_name', '').strip()
+        user_info = get_user_info(user_name)
+
+    if not user_info:
+        return jsonify({'success': False, 'message': 'Unauthorized user context'}), 401
+
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+
+        cursor.execute('SELECT id, employee_name FROM tasks WHERE id = ?', (task_id,))
+        task_row = cursor.fetchone()
+        if not task_row:
+            conn.close()
+            return jsonify({'success': False, 'message': 'Task not found'}), 404
+
+        # Validate employee permission
+        if user_info['role'] == 'employee':
+            emp_name = task_row['employee_name'].strip().lower()
+            u_name = user_info['name'].strip().lower()
+            u_email = user_info['email'].strip().lower()
+            emp_email = (get_employee_email(task_row['employee_name']) or '').strip().lower()
+            if u_name != emp_name and u_email != emp_email:
+                conn.close()
+                return jsonify({'success': False, 'message': "Unauthorized: Cannot comment on another employee's task"}), 403
+
+        created_at = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+        cursor.execute('''
+            INSERT INTO task_comments (task_id, user_name, user_email, user_role, comment, created_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+        ''', (task_id, user_info['name'], user_info['email'], user_info['role'], comment_text, created_at))
+        conn.commit()
+        comment_id = cursor.lastrowid
+        conn.close()
+
+        # Log system activity
+        log_activity(
+            task_id,
+            user_info['name'],
+            user_info['email'],
+            user_info['role'],
+            'COMMENT_ADDED',
+            f"{user_info['name']} added a comment"
+        )
+
+        new_comment = {
+            'id': comment_id,
+            'task_id': task_id,
+            'user_name': user_info['name'],
+            'user_email': user_info['email'],
+            'user_role': user_info['role'],
+            'comment': comment_text,
+            'created_at': created_at,
+            'updated_at': None
+        }
+
+        return jsonify({'success': True, 'message': 'Comment added successfully', 'comment': new_comment}), 201
+
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'Failed to add comment: {str(e)}'}), 500
+
+
+@app.route('/tasks/<int:task_id>/comments/<int:comment_id>', methods=['PATCH'])
+def edit_task_comment(task_id, comment_id):
+    """Allows the author to edit their own comment."""
+    data = request.get_json() or {}
+    new_comment_text = data.get('comment', '').strip()
+    user_email = data.get('user_email', '').strip()
+
+    if not new_comment_text:
+        return jsonify({'success': False, 'message': 'Comment text cannot be empty'}), 400
+
+    user_info = get_user_info(user_email)
+    if not user_info:
+        return jsonify({'success': False, 'message': 'Unauthorized user context'}), 401
+
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+
+        cursor.execute('SELECT id, task_id, user_email, user_name FROM task_comments WHERE id = ? AND task_id = ?', (comment_id, task_id))
+        comment_row = cursor.fetchone()
+
+        if not comment_row:
+            conn.close()
+            return jsonify({'success': False, 'message': 'Comment not found'}), 404
+
+        # Validate comment ownership
+        if comment_row['user_email'].strip().lower() != user_info['email'].strip().lower():
+            conn.close()
+            return jsonify({'success': False, 'message': 'Unauthorized: You can only edit your own comments'}), 403
+
+        updated_at = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        cursor.execute('UPDATE task_comments SET comment = ?, updated_at = ? WHERE id = ?', (new_comment_text, updated_at, comment_id))
+        conn.commit()
+        conn.close()
+
+        # Log system activity
+        log_activity(
+            task_id,
+            user_info['name'],
+            user_info['email'],
+            user_info['role'],
+            'COMMENT_EDITED',
+            f"{user_info['name']} edited a comment"
+        )
+
+        return jsonify({'success': True, 'message': 'Comment updated successfully'}), 200
+
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'Failed to update comment: {str(e)}'}), 500
+
+
+@app.route('/tasks/<int:task_id>/comments/<int:comment_id>', methods=['DELETE'])
+def delete_task_comment(task_id, comment_id):
+    """Allows the author to delete their own comment."""
+    data = request.get_json() or {}
+    user_email = data.get('user_email', '').strip() or request.args.get('user_email', '').strip()
+
+    user_info = get_user_info(user_email)
+    if not user_info:
+        return jsonify({'success': False, 'message': 'Unauthorized user context'}), 401
+
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+
+        cursor.execute('SELECT id, task_id, user_email, user_name FROM task_comments WHERE id = ? AND task_id = ?', (comment_id, task_id))
+        comment_row = cursor.fetchone()
+
+        if not comment_row:
+            conn.close()
+            return jsonify({'success': False, 'message': 'Comment not found'}), 404
+
+        # Validate comment ownership
+        if comment_row['user_email'].strip().lower() != user_info['email'].strip().lower():
+            conn.close()
+            return jsonify({'success': False, 'message': 'Unauthorized: You can only delete your own comments'}), 403
+
+        cursor.execute('DELETE FROM task_comments WHERE id = ?', (comment_id,))
+        conn.commit()
+        conn.close()
+
+        # Log system activity
+        log_activity(
+            task_id,
+            user_info['name'],
+            user_info['email'],
+            user_info['role'],
+            'COMMENT_DELETED',
+            f"{user_info['name']} deleted a comment"
+        )
+
+        return jsonify({'success': True, 'message': 'Comment deleted successfully'}), 200
+
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'Failed to delete comment: {str(e)}'}), 500
+
+
+@app.route('/tasks/<int:task_id>/activity', methods=['GET'])
+def get_task_activity(task_id):
+    """Returns activity records for a specific task sorted newest first."""
+    user_email = request.args.get('user_email', '').strip()
+    user_info = get_user_info(user_email)
+
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+
+        cursor.execute('SELECT id, employee_name FROM tasks WHERE id = ?', (task_id,))
+        task_row = cursor.fetchone()
+        if not task_row:
+            conn.close()
+            return jsonify({'success': False, 'message': 'Task not found'}), 404
+
+        if user_info and user_info['role'] == 'employee':
+            emp_name = task_row['employee_name'].strip().lower()
+            u_name = user_info['name'].strip().lower()
+            u_email = user_info['email'].strip().lower()
+            emp_email = (get_employee_email(task_row['employee_name']) or '').strip().lower()
+            if u_name != emp_name and u_email != emp_email:
+                conn.close()
+                return jsonify({'success': False, 'message': 'Unauthorized access to task activity'}), 403
+
+        cursor.execute('''
+            SELECT id, task_id, actor_name, actor_email, actor_role, activity_type, activity_description, created_at, metadata
+            FROM task_activity WHERE task_id = ? ORDER BY id DESC
+        ''', (task_id,))
+        rows = cursor.fetchall()
+        conn.close()
+
+        activities = [
+            {
+                'id': r['id'],
+                'task_id': r['task_id'],
+                'actor_name': r['actor_name'],
+                'actor_email': r['actor_email'],
+                'actor_role': r['actor_role'],
+                'activity_type': r['activity_type'],
+                'activity_description': r['activity_description'],
+                'created_at': r['created_at'],
+                'metadata': json.loads(r['metadata']) if r['metadata'] else None
+            }
+            for r in rows
+        ]
+
+        return jsonify({'success': True, 'activity': activities}), 200
+
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'Error fetching activity: {str(e)}'}), 500
+
+
+@app.route('/activity/recent', methods=['GET'])
+def get_recent_team_activity():
+    """Returns top 6 recent activities across all tasks for Manager Dashboard."""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+
+        cursor.execute('''
+            SELECT a.id, a.task_id, a.actor_name, a.actor_email, a.actor_role, a.activity_type,
+                   a.activity_description, a.created_at, t.task as task_title, t.employee_name
+            FROM task_activity a
+            JOIN tasks t ON a.task_id = t.id
+            ORDER BY a.id DESC LIMIT 6
+        ''')
+        rows = cursor.fetchall()
+        conn.close()
+
+        recent = [
+            {
+                'id': r['id'],
+                'task_id': r['task_id'],
+                'actor_name': r['actor_name'],
+                'actor_email': r['actor_email'],
+                'actor_role': r['actor_role'],
+                'activity_type': r['activity_type'],
+                'activity_description': r['activity_description'],
+                'created_at': r['created_at'],
+                'task_title': r['task_title'],
+                'employee_name': r['employee_name']
+            }
+            for r in rows
+        ]
+
+        return jsonify({'success': True, 'activities': recent}), 200
+
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'Error fetching recent activity: {str(e)}'}), 500
 
 
 if __name__ == '__main__':

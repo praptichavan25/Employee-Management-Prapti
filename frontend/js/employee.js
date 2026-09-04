@@ -644,59 +644,340 @@ function updateFilterPillCounts(tasks) {
 }
 
 // Modal State for Completion Confirmation
-let pendingStatusChange = null;
+let pendingCompleteTaskId = null;
+let currentModalTaskId = null;
+let currentProgressTaskId = null;
+let selectedProgressValue = 0;
 
-function requestStatusChange(taskId, newStatus, prevStatus) {
-    if (newStatus === 'Completed' && prevStatus !== 'Completed') {
-        const task = allEmployeeTasks.find(t => t.id === taskId);
-        pendingStatusChange = { taskId, newStatus, prevStatus };
+function promptCompleteTask(taskId) {
+    const task = allEmployeeTasks.find(t => t.id === taskId);
+    if (!task) return;
 
-        const modal = document.getElementById('completeConfirmModal');
-        const desc = document.getElementById('confirmTaskTitle');
-        if (desc && task) {
-            desc.textContent = `Are you sure you want to mark "${task.task}" as completed?`;
-        }
-        if (modal) modal.style.display = 'flex';
-        return;
+    pendingCompleteTaskId = taskId;
+    const modal = document.getElementById('completeConfirmModal');
+    const desc = document.getElementById('confirmTaskTitle');
+    if (desc) {
+        desc.textContent = `Are you sure you want to mark "${task.task}" as completed?`;
     }
-
-    // Direct update for Assigned <-> In Progress
-    applyTaskStatusUpdate(taskId, newStatus, prevStatus);
+    if (modal) {
+        modal.classList.add('active');
+        modal.style.display = 'flex';
+    }
 }
 
 function cancelCompleteModal() {
     const modal = document.getElementById('completeConfirmModal');
-    if (modal) modal.style.display = 'none';
-
-    if (pendingStatusChange) {
-        // Revert select dropdown to previous status
-        const selectEl = document.getElementById(`status-select-${pendingStatusChange.taskId}`);
-        if (selectEl) selectEl.value = pendingStatusChange.prevStatus;
-        pendingStatusChange = null;
+    if (modal) {
+        modal.classList.remove('active');
+        modal.style.display = 'none';
     }
+    pendingCompleteTaskId = null;
 }
 
 function executeCompleteModal() {
     const modal = document.getElementById('completeConfirmModal');
-    if (modal) modal.style.display = 'none';
+    if (modal) {
+        modal.classList.remove('active');
+        modal.style.display = 'none';
+    }
 
-    if (pendingStatusChange) {
-        applyTaskStatusUpdate(pendingStatusChange.taskId, pendingStatusChange.newStatus, pendingStatusChange.prevStatus);
-        pendingStatusChange = null;
+    if (pendingCompleteTaskId) {
+        applyTaskStatusUpdate(pendingCompleteTaskId, 'Completed');
+        pendingCompleteTaskId = null;
+    }
+}
+
+// ============================================================
+// ADD COMMENT MODAL LOGIC
+// ============================================================
+function openAddCommentModal(taskId) {
+    const task = allEmployeeTasks.find(t => t.id === taskId);
+    if (!task) return;
+
+    currentModalTaskId = taskId;
+    const titleBadge = document.getElementById('empCommentModalTaskTitle');
+    const textarea = document.getElementById('empCommentModalTextarea');
+    const modal = document.getElementById('empAddCommentModal');
+
+    if (titleBadge) titleBadge.textContent = `Task: ${task.task}`;
+    if (textarea) textarea.value = '';
+
+    if (modal) {
+        modal.classList.add('active');
+        modal.style.display = 'flex';
+        setTimeout(() => { if (textarea) textarea.focus(); }, 50);
+    }
+}
+
+function closeAddCommentModal() {
+    currentModalTaskId = null;
+    const modal = document.getElementById('empAddCommentModal');
+    if (modal) {
+        modal.classList.remove('active');
+        modal.style.display = 'none';
+    }
+}
+
+async function submitEmployeeComment() {
+    if (!currentModalTaskId) return;
+
+    const textarea = document.getElementById('empCommentModalTextarea');
+    const submitBtn = document.getElementById('empPostCommentSubmitBtn');
+    const commentText = textarea ? textarea.value.trim() : '';
+
+    if (!commentText) {
+        alert('Please enter a comment before submitting.');
+        return;
+    }
+
+    const user = getCurrentUser();
+    const taskId = currentModalTaskId;
+
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span class="material-symbols-outlined" style="font-size:16px;">hourglass_empty</span> Posting...';
+    }
+
+    try {
+        const resp = await fetch(`http://127.0.0.1:5001/tasks/${taskId}/comments`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                comment: commentText,
+                user_email: user.email,
+                user_name: user.name,
+                user_role: user.role || 'employee'
+            })
+        });
+
+        const data = await resp.json();
+
+        if (resp.ok && data.success) {
+            // Update in-memory comment count
+            const task = allEmployeeTasks.find(t => t.id === taskId);
+            if (task) {
+                task.comment_count = (task.comment_count || 0) + 1;
+            }
+
+            closeAddCommentModal();
+
+            // Update comment count button text immediately
+            const countBtnText = document.getElementById(`task-comment-count-text-${taskId}`);
+            if (countBtnText && task) {
+                countBtnText.textContent = `${task.comment_count} ${task.comment_count === 1 ? 'Comment' : 'Comments'}`;
+            }
+
+            // If inline comments collapsible exists and is open, reload comments immediately
+            const coll = document.getElementById(`task-comments-${taskId}`);
+            if (coll) {
+                if (!coll.classList.contains('open')) {
+                    toggleTaskComments(taskId);
+                } else {
+                    loadInlineTaskComments(taskId);
+                }
+            }
+        } else {
+            alert(data.message || 'Failed to post comment.');
+        }
+    } catch (e) {
+        console.error('Error posting comment:', e);
+        alert('Unable to connect to server. Please try again.');
+    } finally {
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<span class="material-symbols-outlined" style="font-size:16px;">send</span> Post Comment';
+        }
+    }
+}
+
+// ============================================================
+// UPDATE PROGRESS MODAL LOGIC
+// ============================================================
+function openUpdateProgressModal(taskId) {
+    const task = allEmployeeTasks.find(t => t.id === taskId);
+    if (!task) return;
+
+    currentProgressTaskId = taskId;
+    const titleBadge = document.getElementById('empProgressModalTaskTitle');
+    const modal = document.getElementById('empUpdateProgressModal');
+
+    if (titleBadge) titleBadge.textContent = `Task: ${task.task}`;
+
+    const currentPct = task.progress !== undefined ? parseInt(task.progress) : (task.status === 'Completed' ? 100 : 0);
+    selectProgressOption(currentPct);
+
+    if (modal) {
+        modal.classList.add('active');
+        modal.style.display = 'flex';
+    }
+}
+
+function selectProgressOption(pct) {
+    selectedProgressValue = pct;
+
+    const optButtons = document.querySelectorAll('.px-progress-opt-btn');
+    optButtons.forEach(btn => {
+        const btnProg = parseInt(btn.getAttribute('data-progress'));
+        if (btnProg === pct) {
+            btn.classList.add('active');
+        } else {
+            btn.classList.remove('active');
+        }
+    });
+
+    const fillBar = document.getElementById('empProgressModalFill');
+    const textVal = document.getElementById('empProgressModalValText');
+
+    if (fillBar) fillBar.style.width = `${pct}%`;
+    if (textVal) textVal.textContent = `${pct}% Complete`;
+}
+
+function closeUpdateProgressModal() {
+    currentProgressTaskId = null;
+    const modal = document.getElementById('empUpdateProgressModal');
+    if (modal) {
+        modal.classList.remove('active');
+        modal.style.display = 'none';
+    }
+}
+
+async function saveEmployeeProgress() {
+    if (!currentProgressTaskId) return;
+
+    const taskId = currentProgressTaskId;
+    const saveBtn = document.getElementById('empSaveProgressBtn');
+    const user = getCurrentUser();
+
+    if (saveBtn) {
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = '<span class="material-symbols-outlined" style="font-size:16px;">hourglass_empty</span> Saving...';
+    }
+
+    try {
+        const resp = await fetch(`http://127.0.0.1:5001/tasks/${taskId}/progress`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                progress: selectedProgressValue,
+                employee_name: user.name,
+                user_email: user.email,
+                actor_email: user.email
+            })
+        });
+
+        const data = await resp.json();
+
+        if (resp.ok && data.success) {
+            const task = allEmployeeTasks.find(t => t.id === taskId);
+            if (task && data.task) {
+                task.progress = data.task.progress;
+                task.status = data.task.status;
+            }
+
+            closeUpdateProgressModal();
+
+            // Refresh view components immediately without reload
+            updateFilterPillCounts(allEmployeeTasks);
+            applyTaskFilterAndSearch();
+            renderPastDueTasks(allEmployeeTasks);
+            renderUpcomingDeadlines(allEmployeeTasks);
+            updateKPICounters(allEmployeeTasks);
+        } else {
+            alert(data.message || 'Failed to update task progress.');
+        }
+    } catch (e) {
+        console.error('Error updating progress:', e);
+        alert('Network error while saving progress.');
+    } finally {
+        if (saveBtn) {
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = '<span class="material-symbols-outlined" style="font-size:16px;">check</span> Save Progress';
+        }
+    }
+}
+
+// ============================================================
+// INLINE TASK COMMENTS TOGGLE & DISPLAY
+// ============================================================
+async function toggleTaskComments(taskId) {
+    const coll = document.getElementById(`task-comments-${taskId}`);
+    const caret = document.getElementById(`comment-caret-${taskId}`);
+    if (!coll) return;
+
+    const isOpen = coll.classList.contains('open');
+    if (isOpen) {
+        coll.classList.remove('open');
+        if (caret) caret.style.transform = 'rotate(0deg)';
+    } else {
+        coll.classList.add('open');
+        if (caret) caret.style.transform = 'rotate(180deg)';
+        loadInlineTaskComments(taskId);
+    }
+}
+
+async function loadInlineTaskComments(taskId) {
+    const listEl = document.getElementById(`task-comments-list-${taskId}`);
+    if (!listEl) return;
+
+    listEl.innerHTML = '<div style="text-align:center; padding:10px; color:#94A3B8; font-size:12px;">Loading comments...</div>';
+
+    const user = getCurrentUser();
+
+    try {
+        const resp = await fetch(`http://127.0.0.1:5001/tasks/${taskId}/comments?user_email=${encodeURIComponent(user.email)}`);
+        const data = await resp.json();
+
+        if (resp.ok && data.success) {
+            const comments = data.comments || [];
+            const task = allEmployeeTasks.find(t => t.id === taskId);
+            if (task) task.comment_count = comments.length;
+
+            const countBtnText = document.getElementById(`task-comment-count-text-${taskId}`);
+            if (countBtnText) {
+                countBtnText.textContent = `${comments.length} ${comments.length === 1 ? 'Comment' : 'Comments'}`;
+            }
+
+            if (comments.length === 0) {
+                listEl.innerHTML = '<div class="px-task-comments-empty">No comments on this task yet. Click "Add Comment" to start the conversation.</div>';
+                return;
+            }
+
+            listEl.innerHTML = comments.map(c => {
+                const role = (c.user_role || '').toLowerCase() === 'project_manager' ? 'Project Manager' : 'Employee';
+                const roleClass = (c.user_role || '').toLowerCase() === 'project_manager' ? 'pm' : '';
+                const relativeTime = formatTimestamp(c.created_at);
+
+                return `
+                    <div class="px-task-comment-card">
+                        <div class="px-task-comment-card-top">
+                            <div class="px-task-comment-author-group">
+                                <span class="px-task-comment-author">${escapeHtml(c.user_name)}</span>
+                                <span class="px-task-comment-role-tag ${roleClass}">${role}</span>
+                            </div>
+                            <span class="px-task-comment-timestamp">${escapeHtml(relativeTime)}</span>
+                        </div>
+                        <div class="px-task-comment-body">"${escapeHtml(c.comment)}"</div>
+                    </div>
+                `;
+            }).join('');
+        } else {
+            listEl.innerHTML = `<div class="px-task-comments-empty" style="color:#E11D48;">${escapeHtml(data.message || 'Error loading comments')}</div>`;
+        }
+    } catch (e) {
+        listEl.innerHTML = '<div class="px-task-comments-empty" style="color:#E11D48;">Network error loading comments</div>';
     }
 }
 
 // Safe backend call via PATCH /tasks/<task_id>/status
-async function applyTaskStatusUpdate(taskId, newStatus, prevStatus) {
-    const selectEl = document.getElementById(`status-select-${taskId}`);
-    if (selectEl) selectEl.disabled = true;
-
+async function applyTaskStatusUpdate(taskId, newStatus) {
     let loggedInName = '';
+    let loggedInEmail = '';
     try {
         const stored = localStorage.getItem('phoenix_user');
         if (stored) {
             const u = JSON.parse(stored);
             if (u && u.name) loggedInName = u.name;
+            if (u && u.email) loggedInEmail = u.email;
         }
     } catch (e) { }
 
@@ -706,7 +987,9 @@ async function applyTaskStatusUpdate(taskId, newStatus, prevStatus) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 status: newStatus,
-                employee_name: loggedInName
+                employee_name: loggedInName,
+                actor_email: loggedInEmail,
+                user_email: loggedInEmail
             })
         });
 
@@ -717,6 +1000,9 @@ async function applyTaskStatusUpdate(taskId, newStatus, prevStatus) {
             const targetTask = allEmployeeTasks.find(t => t.id === taskId);
             if (targetTask) {
                 targetTask.status = newStatus;
+                if (newStatus === 'Completed') {
+                    targetTask.progress = 100;
+                }
             }
 
             updateFilterPillCounts(allEmployeeTasks);
@@ -726,17 +1012,15 @@ async function applyTaskStatusUpdate(taskId, newStatus, prevStatus) {
             updateKPICounters(allEmployeeTasks);
         } else {
             alert(data.message || 'Failed to update task status.');
-            if (selectEl) selectEl.value = prevStatus;
         }
     } catch (err) {
-        alert('Unable to reach server. Status change reverted.');
-        if (selectEl) selectEl.value = prevStatus;
-    } finally {
-        if (selectEl) selectEl.disabled = false;
+        alert('Unable to reach server. Status change failed.');
     }
 }
 
-// Render dynamic task rows for Assigned Tasks section with status selector
+// ============================================================
+// RENDER INTERACTIVE TASK WORKSPACE CARDS
+// ============================================================
 function renderTasks(tasks) {
     if (!tasksContainer) return;
 
@@ -787,75 +1071,129 @@ function renderTasks(tasks) {
         const isOverdue = isTaskOverdue(task);
         const assignedBy = task.assigned_by || 'Prapti Chavan';
         const dateObj = parseDeadlineDate(task.deadline);
-        const deadline = formatExactDeadline(dateObj);
-
-        let statusClass = 'status-assigned';
-        if (isCompleted) statusClass = 'status-completed';
-        else if (isInProgress) statusClass = 'status-inprogress';
-
-        let priorityBadge = '';
-        if (isCompleted) {
-            priorityBadge = '<span class="px-priority-badge badge-done">Completed</span>';
-        } else if (isOverdue) {
-            priorityBadge = '<span class="px-priority-badge badge-overdue">Past Due</span>';
-        } else if (isInProgress) {
-            priorityBadge = '<span class="px-priority-badge badge-inprogress">In Progress</span>';
-        } else if (isTaskDueToday(task)) {
-            priorityBadge = '<span class="px-priority-badge badge-orange">Due Today</span>';
-        } else {
-            priorityBadge = '<span class="px-priority-badge badge-blue">Assigned</span>';
-        }
-
+        const deadlineFormatted = formatExactDeadline(dateObj);
+        const relativeDeadline = getRelativeDeadlineText(dateObj);
+        const progress = task.progress !== undefined ? parseInt(task.progress) : (isCompleted ? 100 : 0);
+        const commentCount = task.comment_count !== undefined ? parseInt(task.comment_count) : 0;
         const taskId = task.id || index;
 
+        // Status styling
+        let statusBadgeClass = 'px-status-assigned';
+        let statusLabel = 'Assigned';
+        if (isCompleted) {
+            statusBadgeClass = 'px-status-completed';
+            statusLabel = 'Completed';
+        } else if (isInProgress) {
+            statusBadgeClass = 'px-status-inprogress';
+            statusLabel = 'In Progress';
+        }
+
+        // Indicator
+        let indicatorHtml = '';
+        if (isCompleted) {
+            indicatorHtml = `
+                <span class="px-task-ws-due-badge completed">
+                    <span class="material-symbols-outlined" style="font-size:13px;">check_circle</span>
+                    Completed
+                </span>
+            `;
+        } else if (isOverdue) {
+            indicatorHtml = `
+                <span class="px-task-ws-due-badge overdue">
+                    <span class="material-symbols-outlined" style="font-size:13px;">error</span>
+                    Past Due
+                </span>
+            `;
+        } else {
+            indicatorHtml = `
+                <span class="px-task-ws-due-badge upcoming">
+                    <span class="material-symbols-outlined" style="font-size:13px;">schedule</span>
+                    Upcoming
+                </span>
+            `;
+        }
+
         html += `
-            <div class="px-task-row ${isOverdue ? 'row-overdue' : ''}" id="task-row-${taskId}">
-                <div class="px-checkbox-box ${isCompleted ? 'checked' : ''}" onclick="toggleTaskStatusDirect(${taskId})" title="Toggle completion">
-                    ${isCompleted ? '<span class="material-symbols-outlined">check</span>' : ''}
-                </div>
-
-                <div class="px-task-main">
-                    <h4 class="px-t-heading ${isCompleted ? 'completed' : ''}">${escapeHtml(task.task)}</h4>
-                    <p class="px-t-sub">Assigned by <strong>${escapeHtml(assignedBy)}</strong></p>
-                </div>
-
-                <div class="px-task-right-meta">
-                    ${priorityBadge}
-                    
-                    <div class="px-task-time">
-                        <span class="material-symbols-outlined">schedule</span>
-                        <span>${escapeHtml(deadline)}</span>
+            <div class="px-task-workspace-card ${isOverdue ? 'card-overdue' : ''} ${isCompleted ? 'card-completed' : ''}" id="task-card-${taskId}">
+                
+                <!-- 1. Header: Title & Status Badge -->
+                <div class="px-task-ws-header">
+                    <div class="px-task-ws-title-group">
+                        <h4 class="px-task-ws-title ${isCompleted ? 'completed' : ''}">${escapeHtml(task.task)}</h4>
+                        <p class="px-task-ws-assigned">Assigned by <strong>${escapeHtml(assignedBy)}</strong></p>
                     </div>
-
-                    <!-- Clean Status Selector Dropdown -->
-                    <div class="px-status-select-wrap">
-                        <select id="status-select-${taskId}" class="px-status-select ${statusClass}" onchange="handleStatusDropdownChange(${taskId}, this.value, '${escapeHtml(rawStatus)}')">
-                            <option value="Assigned" ${rawStatus.toLowerCase() === 'assigned' ? 'selected' : ''}>Assigned</option>
-                            <option value="In Progress" ${rawStatus.toLowerCase() === 'in progress' ? 'selected' : ''}>In Progress</option>
-                            <option value="Completed" ${isCompleted ? 'selected' : ''}>Completed</option>
-                        </select>
+                    <div class="px-task-ws-badges">
+                        <span class="px-task-status-pill ${statusBadgeClass}">${statusLabel}</span>
                     </div>
                 </div>
+
+                <!-- 2. Deadline Row: Exact Date & Time + Past Due / Upcoming Indicator -->
+                <div class="px-task-ws-deadline-row">
+                    ${indicatorHtml}
+                    <span class="px-task-ws-exact-time">${escapeHtml(deadlineFormatted)}</span>
+                    ${relativeDeadline ? `<span class="px-task-ws-relative-text">• ${escapeHtml(relativeDeadline)}</span>` : ''}
+                </div>
+
+                <!-- 3. Progress Section: Visual Progress Bar -->
+                <div class="px-task-prog-section">
+                    <div class="px-task-prog-header">
+                        <span class="px-task-prog-title">Progress</span>
+                        <span class="px-task-prog-pct" id="task-prog-text-${taskId}">${progress}%</span>
+                    </div>
+                    <div class="px-task-prog-track">
+                        <div class="px-task-prog-fill ${progress === 100 ? 'fill-complete' : ''}" id="task-prog-fill-${taskId}" style="width: ${progress}%;"></div>
+                    </div>
+                </div>
+
+                <!-- 4. Footer Bar: Comment Count Toggle & Action Buttons -->
+                <div class="px-task-footer-bar">
+                    <button type="button" class="px-task-comment-count-btn" onclick="toggleTaskComments(${taskId})" title="Click to view/hide comments">
+                        <span class="material-symbols-outlined" style="font-size: 16px;">chat_bubble_outline</span>
+                        <span id="task-comment-count-text-${taskId}">${commentCount} ${commentCount === 1 ? 'Comment' : 'Comments'}</span>
+                        <span class="material-symbols-outlined" id="comment-caret-${taskId}" style="font-size: 16px; transition: transform 0.2s ease;">expand_more</span>
+                    </button>
+
+                    <div class="px-task-actions-row">
+                        <button type="button" class="px-btn-task-action" onclick="openUpdateProgressModal(${taskId})" title="Update task progress">
+                            <span class="material-symbols-outlined" style="font-size: 14px;">trending_up</span>
+                            Update Progress
+                        </button>
+                        <button type="button" class="px-btn-task-action" onclick="openAddCommentModal(${taskId})" title="Add a comment to this task">
+                            <span class="material-symbols-outlined" style="font-size: 14px;">add_comment</span>
+                            Add Comment
+                        </button>
+                        ${isCompleted ? `
+                            <button type="button" class="px-btn-task-complete is-done" title="Task is completed">
+                                <span class="material-symbols-outlined" style="font-size: 14px;">check_circle</span>
+                                Completed
+                            </button>
+                        ` : `
+                            <button type="button" class="px-btn-task-complete" onclick="promptCompleteTask(${taskId})" title="Mark task as complete">
+                                <span class="material-symbols-outlined" style="font-size: 14px;">check_circle</span>
+                                Mark Complete
+                            </button>
+                        `}
+                    </div>
+                </div>
+
+                <!-- 5. Expandable Inline Comments Area -->
+                <div id="task-comments-${taskId}" class="px-task-comments-collapsible">
+                    <div class="px-task-comments-head">
+                        <span>Comments</span>
+                        <button type="button" class="px-task-comment-count-btn" style="padding:2px 6px; font-size:11px;" onclick="openAddCommentModal(${taskId})">
+                            + Add Comment
+                        </button>
+                    </div>
+                    <div id="task-comments-list-${taskId}" class="px-task-comments-list">
+                        <!-- Loaded dynamically via loadInlineTaskComments -->
+                    </div>
+                </div>
+
             </div>
         `;
     });
 
     tasksContainer.innerHTML = html;
-}
-
-// Dropdown change handler
-function handleStatusDropdownChange(taskId, newStatus, prevStatus) {
-    requestStatusChange(taskId, newStatus, prevStatus);
-}
-
-// Checkbox quick-toggle handler
-function toggleTaskStatusDirect(taskId) {
-    const task = allEmployeeTasks.find(t => t.id === taskId);
-    if (!task) return;
-
-    const currentStatus = (task.status || 'Assigned').trim();
-    const newStatus = currentStatus.toLowerCase() === 'completed' ? 'Assigned' : 'Completed';
-    requestStatusChange(taskId, newStatus, currentStatus);
 }
 
 // Render PAST DUE TASKS section (overdue & not completed for logged-in employee in a compact, elegant list)
@@ -903,7 +1241,7 @@ function renderPastDueTasks(tasks) {
                     <span class="material-symbols-outlined">warning</span>
                 </div>
 
-                <div class="px-pd-row-main">
+                <div class="px-pd-row-main" onclick="openTaskDetails(${task.id})" style="cursor:pointer;" title="Click to view task details">
                     <h4 class="px-pd-row-title">${escapeHtml(task.task)}</h4>
                     <span class="px-pd-row-assigned">Assigned by: <strong>${escapeHtml(assignedBy)}</strong></span>
                 </div>
@@ -1133,4 +1471,437 @@ document.addEventListener('DOMContentLoaded', function () {
         console.error('Error reading logged in user:', e);
     }
     loadTasks(employeeName);
+});
+
+
+// ============================================================
+// PHOENIX - TASK DETAILS DRAWER & COMMENTS / ACTIVITY ENGINE (EMPLOYEE)
+// ============================================================
+
+let currentDrawerTaskId = null;
+let pendingCommentIdToDelete = null;
+
+function getCurrentUser() {
+    try {
+        const stored = localStorage.getItem('phoenix_user');
+        if (stored) {
+            const parsed = JSON.parse(stored);
+            if (parsed && parsed.email) return parsed;
+        }
+    } catch (e) {}
+    return {
+        name: 'Sanjana Chavan',
+        email: 'sanjanachavan2809@gmail.com',
+        role: 'employee',
+        department: 'Research & Development'
+    };
+}
+
+// Open Task Details Drawer
+async function openTaskDetails(taskId) {
+    if (!taskId) return;
+    currentDrawerTaskId = taskId;
+
+    const backdrop = document.getElementById('pxDrawerBackdrop');
+    const drawer = document.getElementById('pxTaskDrawer');
+    if (!drawer || !backdrop) return;
+
+    backdrop.classList.add('active');
+    drawer.classList.add('active');
+
+    document.getElementById('pxDrawerTitle').textContent = 'Loading task...';
+    document.getElementById('pxDrawerAssignee').textContent = '...';
+    document.getElementById('pxDrawerAssignedBy').textContent = '...';
+    document.getElementById('pxDrawerDeadline').textContent = '...';
+    document.getElementById('pxDrawerDescription').textContent = 'Loading description...';
+    document.getElementById('pxDrawerCommentsList').innerHTML = '<div style="text-align:center; padding:16px; color:#94A3B8; font-size:13px;">Loading comments...</div>';
+    document.getElementById('pxDrawerActivityTimeline').innerHTML = '<div style="text-align:center; padding:16px; color:#94A3B8; font-size:13px;">Loading activity timeline...</div>';
+
+    const user = getCurrentUser();
+
+    try {
+        const resp = await fetch(`http://127.0.0.1:5001/tasks/id/${taskId}?user_email=${encodeURIComponent(user.email)}`);
+        const data = await resp.json();
+
+        if (resp.ok && data.success && data.task) {
+            const t = data.task;
+            document.getElementById('pxDrawerTitle').textContent = t.task || 'Untitled Task';
+            document.getElementById('pxDrawerAssignee').textContent = t.employee_name || 'Unassigned';
+            document.getElementById('pxDrawerAssignedBy').textContent = t.assigned_by || 'Prapti Chavan';
+            document.getElementById('pxDrawerDescription').textContent = t.task || 'No detailed description provided.';
+
+            let formattedDeadline = t.deadline;
+            if (t.deadline) {
+                const dt = parseDeadlineDate(t.deadline);
+                if (dt && !isNaN(dt)) {
+                    formattedDeadline = dt.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) + ' · ' +
+                                        dt.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }) + ' IST';
+                }
+            }
+            document.getElementById('pxDrawerDeadline').textContent = formattedDeadline;
+
+            const priority = (t.priority || 'High').toUpperCase();
+            const rawStatus = (t.status || 'Assigned').trim();
+            const isOverdue = isTaskOverdue(t);
+
+            const prioBadge = document.getElementById('pxDrawerPriorityBadge');
+            prioBadge.textContent = priority;
+            prioBadge.className = `px-badge-tag ${priority === 'HIGH' ? 'px-badge-high' : priority === 'MEDIUM' ? 'px-badge-medium' : 'px-badge-low'}`;
+
+            const statusBadge = document.getElementById('pxDrawerStatusBadge');
+            if (isOverdue) {
+                statusBadge.textContent = 'PAST DUE';
+                statusBadge.className = 'px-badge-tag px-badge-pastdue';
+            } else if (rawStatus.toLowerCase() === 'completed') {
+                statusBadge.textContent = 'COMPLETED';
+                statusBadge.className = 'px-badge-tag px-badge-completed';
+            } else if (rawStatus.toLowerCase() === 'in progress') {
+                statusBadge.textContent = 'IN PROGRESS';
+                statusBadge.className = 'px-badge-tag px-badge-progress';
+            } else {
+                statusBadge.textContent = 'ASSIGNED';
+                statusBadge.className = 'px-badge-tag px-badge-assigned';
+            }
+        } else {
+            document.getElementById('pxDrawerTitle').textContent = 'Task Not Found or Unauthorized';
+        }
+    } catch (e) {
+        console.error('Error fetching task details:', e);
+    }
+
+    await Promise.all([
+        loadTaskComments(taskId),
+        loadTaskActivity(taskId)
+    ]);
+}
+
+// Close Drawer
+function closeTaskDetails() {
+    currentDrawerTaskId = null;
+    const backdrop = document.getElementById('pxDrawerBackdrop');
+    const drawer = document.getElementById('pxTaskDrawer');
+    if (backdrop) backdrop.classList.remove('active');
+    if (drawer) drawer.classList.remove('active');
+}
+
+// Load Task Comments
+async function loadTaskComments(taskId) {
+    const listEl = document.getElementById('pxDrawerCommentsList');
+    const countEl = document.getElementById('pxDrawerCommentsCount');
+    if (!listEl) return;
+
+    const user = getCurrentUser();
+
+    try {
+        const resp = await fetch(`http://127.0.0.1:5001/tasks/${taskId}/comments?user_email=${encodeURIComponent(user.email)}`);
+        const data = await resp.json();
+
+        if (resp.ok && data.success) {
+            const comments = data.comments || [];
+            if (countEl) countEl.textContent = comments.length;
+
+            if (comments.length === 0) {
+                listEl.innerHTML = '<div style="text-align:center; padding:16px; color:#94A3B8; font-size:13px;">No comments yet. Be the first to write a comment!</div>';
+                return;
+            }
+
+            listEl.innerHTML = comments.map(c => {
+                const isAuthor = (c.user_email || '').toLowerCase() === (user.email || '').toLowerCase();
+                const initials = getInitials(c.user_name);
+                const roleLabel = (c.user_role || '').toLowerCase() === 'project_manager' ? 'Project Manager' : 'Employee';
+                const avatarClass = (c.user_role || '').toLowerCase() === 'project_manager' ? '' : 'emp-avatar';
+                const timeFormatted = formatTimestamp(c.created_at);
+
+                return `
+                    <div class="px-comment-item" id="comment-item-${c.id}">
+                        <div class="px-comment-avatar ${avatarClass}">${initials}</div>
+                        <div class="px-comment-content">
+                            <div class="px-comment-header">
+                                <div class="px-comment-user-info">
+                                    <span class="px-comment-user-name">${escapeHtml(c.user_name)}</span>
+                                    <span class="px-comment-role-tag">${roleLabel}</span>
+                                </div>
+                                <div style="display:flex; align-items:center; gap:8px;">
+                                    <span class="px-comment-time">${timeFormatted}</span>
+                                    ${isAuthor ? `
+                                        <div class="px-comment-menu-wrap">
+                                            <button type="button" class="px-comment-menu-btn" onclick="toggleCommentMenu(${c.id}, event)">•••</button>
+                                            <div id="comment-dropdown-${c.id}" class="px-comment-dropdown">
+                                                <button type="button" class="px-comment-dropdown-item" onclick="startEditComment(${c.id}, '${escapeHtml(c.comment).replace(/'/g, "\\'")}')">
+                                                    <span class="material-symbols-outlined" style="font-size:14px;">edit</span> Edit
+                                                </button>
+                                                <button type="button" class="px-comment-dropdown-item delete" onclick="promptDeleteComment(${c.id})">
+                                                    <span class="material-symbols-outlined" style="font-size:14px;">delete</span> Delete
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ` : ''}
+                                </div>
+                            </div>
+                            <div id="comment-text-${c.id}" class="px-comment-text">${escapeHtml(c.comment)}</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        } else {
+            listEl.innerHTML = `<div style="text-align:center; padding:12px; color:#E11D48; font-size:13px;">${escapeHtml(data.message || 'Failed to load comments')}</div>`;
+        }
+    } catch (e) {
+        console.error('Error loading comments:', e);
+        listEl.innerHTML = '<div style="text-align:center; padding:12px; color:#E11D48; font-size:13px;">Error loading comments</div>';
+    }
+}
+
+// Load Task Activity
+async function loadTaskActivity(taskId) {
+    const timelineEl = document.getElementById('pxDrawerActivityTimeline');
+    if (!timelineEl) return;
+
+    const user = getCurrentUser();
+
+    try {
+        const resp = await fetch(`http://127.0.0.1:5001/tasks/${taskId}/activity?user_email=${encodeURIComponent(user.email)}`);
+        const data = await resp.json();
+
+        if (resp.ok && data.success) {
+            const activities = data.activity || [];
+            if (activities.length === 0) {
+                timelineEl.innerHTML = '<div style="text-align:center; padding:16px; color:#94A3B8; font-size:13px;">No recorded activity history yet.</div>';
+                return;
+            }
+
+            timelineEl.innerHTML = activities.map(a => {
+                const timeFormatted = formatTimestamp(a.created_at);
+                return `
+                    <div class="px-activity-item">
+                        <div class="px-activity-dot"></div>
+                        <div class="px-activity-desc">${escapeHtml(a.activity_description)}</div>
+                        <div class="px-activity-time">${timeFormatted}</div>
+                    </div>
+                `;
+            }).join('');
+        } else {
+            timelineEl.innerHTML = '<div style="text-align:center; padding:12px; color:#94A3B8; font-size:13px;">No activity available</div>';
+        }
+    } catch (e) {
+        console.error('Error loading task activity:', e);
+    }
+}
+
+// Send Comment
+async function submitComment() {
+    if (!currentDrawerTaskId) return;
+
+    const input = document.getElementById('pxNewCommentInput');
+    const sendBtn = document.getElementById('pxSendCommentBtn');
+    const text = input ? input.value.trim() : '';
+
+    if (!text) return;
+
+    const user = getCurrentUser();
+    if (sendBtn) {
+        sendBtn.disabled = true;
+        sendBtn.innerHTML = '<span class="material-symbols-outlined" style="font-size:16px;">hourglass_empty</span> Sending...';
+    }
+
+    try {
+        const resp = await fetch(`http://127.0.0.1:5001/tasks/${currentDrawerTaskId}/comments`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                comment: text,
+                user_email: user.email,
+                user_name: user.name,
+                user_role: user.role
+            })
+        });
+
+        const data = await resp.json();
+        if (resp.ok && data.success) {
+            if (input) input.value = '';
+            await loadTaskComments(currentDrawerTaskId);
+            await loadTaskActivity(currentDrawerTaskId);
+        } else {
+            alert(data.message || 'Failed to submit comment.');
+        }
+    } catch (e) {
+        alert('Network error while posting comment.');
+    } finally {
+        if (sendBtn) {
+            sendBtn.disabled = false;
+            sendBtn.innerHTML = '<span class="material-symbols-outlined" style="font-size:16px;">send</span> Send';
+        }
+    }
+}
+
+// Dropdown Action Menu Toggle
+function toggleCommentMenu(commentId, event) {
+    if (event) event.stopPropagation();
+    document.querySelectorAll('.px-comment-dropdown').forEach(d => {
+        if (d.id !== `comment-dropdown-${commentId}`) d.classList.remove('show');
+    });
+    const dropdown = document.getElementById(`comment-dropdown-${commentId}`);
+    if (dropdown) dropdown.classList.toggle('show');
+}
+
+// Start Inline Comment Editing
+function startEditComment(commentId, currentText) {
+    document.querySelectorAll('.px-comment-dropdown').forEach(d => d.classList.remove('show'));
+
+    const textEl = document.getElementById(`comment-text-${commentId}`);
+    if (!textEl) return;
+
+    textEl.innerHTML = `
+        <div class="px-comment-edit-box">
+            <textarea id="edit-textarea-${commentId}" class="px-comment-edit-textarea">${escapeHtml(currentText)}</textarea>
+            <div class="px-comment-edit-actions">
+                <button type="button" class="px-modal-btn-cancel" onclick="cancelEditComment(${commentId}, '${escapeHtml(currentText).replace(/'/g, "\\'")}')">Cancel</button>
+                <button type="button" class="px-btn-send-comment" onclick="saveEditComment(${commentId})">Save</button>
+            </div>
+        </div>
+    `;
+}
+
+function cancelEditComment(commentId, originalText) {
+    const textEl = document.getElementById(`comment-text-${commentId}`);
+    if (textEl) textEl.textContent = originalText;
+}
+
+async function saveEditComment(commentId) {
+    const textarea = document.getElementById(`edit-textarea-${commentId}`);
+    if (!textarea) return;
+    const newText = textarea.value.trim();
+    if (!newText) return;
+
+    const user = getCurrentUser();
+    try {
+        const resp = await fetch(`http://127.0.0.1:5001/tasks/${currentDrawerTaskId}/comments/${commentId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                comment: newText,
+                user_email: user.email
+            })
+        });
+
+        const data = await resp.json();
+        if (resp.ok && data.success) {
+            await loadTaskComments(currentDrawerTaskId);
+            await loadTaskActivity(currentDrawerTaskId);
+        } else {
+            alert(data.message || 'Failed to update comment.');
+        }
+    } catch (e) {
+        alert('Network error updating comment.');
+    }
+}
+
+// Delete Comment Confirmation
+function promptDeleteComment(commentId) {
+    document.querySelectorAll('.px-comment-dropdown').forEach(d => d.classList.remove('show'));
+    pendingCommentIdToDelete = commentId;
+    const modal = document.getElementById('pxDeleteCommentModal');
+    if (modal) modal.classList.add('active');
+}
+
+function cancelDeleteComment() {
+    pendingCommentIdToDelete = null;
+    const modal = document.getElementById('pxDeleteCommentModal');
+    if (modal) modal.classList.remove('active');
+}
+
+async function confirmDeleteComment() {
+    if (!pendingCommentIdToDelete || !currentDrawerTaskId) return;
+
+    const commentId = pendingCommentIdToDelete;
+    const user = getCurrentUser();
+
+    try {
+        const resp = await fetch(`http://127.0.0.1:5001/tasks/${currentDrawerTaskId}/comments/${commentId}`, {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_email: user.email })
+        });
+
+        const data = await resp.json();
+        cancelDeleteComment();
+
+        if (resp.ok && data.success) {
+            await loadTaskComments(currentDrawerTaskId);
+            await loadTaskActivity(currentDrawerTaskId);
+        } else {
+            alert(data.message || 'Failed to delete comment.');
+        }
+    } catch (e) {
+        cancelDeleteComment();
+        alert('Network error deleting comment.');
+    }
+}
+
+// Utility Helpers
+function getInitials(name) {
+    if (!name) return 'U';
+    const parts = name.trim().split(/\s+/);
+    if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    return parts[0].substring(0, 2).toUpperCase();
+}
+
+function formatTimestamp(isoStr) {
+    if (!isoStr) return '';
+    try {
+        const d = new Date(isoStr.includes('T') ? isoStr : isoStr.replace(' ', 'T'));
+        if (isNaN(d)) return isoStr;
+        const now = new Date();
+        const diffMs = now - d;
+        const diffMins = Math.floor(diffMs / (1000 * 60));
+        const diffHrs = Math.floor(diffMs / (1000 * 60 * 60));
+
+        if (diffMins < 1) return 'Just now';
+        if (diffMins < 60) return `${diffMins} min ago`;
+        if (diffHrs < 24 && d.toDateString() === now.toDateString()) {
+            return 'Today · ' + d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+        }
+        return d.toLocaleDateString('en-IN', { month: 'short', day: 'numeric' }) + ' · ' +
+               d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+    } catch (e) {
+        return isoStr;
+    }
+}
+
+// Bind Global Drawer Event Listeners once DOM is ready
+document.addEventListener('DOMContentLoaded', function () {
+    const backdrop = document.getElementById('pxDrawerBackdrop');
+    const closeBtn = document.getElementById('pxCloseDrawerBtn');
+    const sendBtn = document.getElementById('pxSendCommentBtn');
+    const commentInput = document.getElementById('pxNewCommentInput');
+    const cancelDelBtn = document.getElementById('pxCancelDeleteCommentBtn');
+    const confirmDelBtn = document.getElementById('pxConfirmDeleteCommentBtn');
+
+    if (backdrop) backdrop.addEventListener('click', closeTaskDetails);
+    if (closeBtn) closeBtn.addEventListener('click', closeTaskDetails);
+    if (sendBtn) sendBtn.addEventListener('click', submitComment);
+    if (cancelDelBtn) cancelDelBtn.addEventListener('click', cancelDeleteComment);
+    if (confirmDelBtn) confirmDelBtn.addEventListener('click', confirmDeleteComment);
+
+    if (commentInput) {
+        commentInput.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                e.preventDefault();
+                submitComment();
+            }
+        });
+    }
+
+    document.addEventListener('click', function (e) {
+        if (!e.target.closest('.px-comment-menu-wrap')) {
+            document.querySelectorAll('.px-comment-dropdown').forEach(d => d.classList.remove('show'));
+        }
+    });
+
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') {
+            closeTaskDetails();
+            cancelDeleteComment();
+        }
+    });
 });

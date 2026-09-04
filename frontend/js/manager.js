@@ -313,7 +313,7 @@ function hydrateDashboard() {
             const deadlineTimeStr = item.date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
 
             const timelineHTML = `
-                <div class="px-timeline-item">
+                <div class="px-timeline-item" onclick="openTaskDetails(${item.task.id})" style="cursor:pointer;" title="Click to view task details">
                     <div class="px-timeline-dot ${dotClass}"></div>
                     <div class="px-timeline-body">
                         <div class="px-timeline-time">${deadlineTimeStr}</div>
@@ -404,19 +404,42 @@ function hydrateDashboard() {
 
     // Render alert items helper
     function renderAlertItem(item) {
-        const escapedTask = item.task.task.replace(/'/g, "\\'");
-        const escapedEmp = item.task.employee_name.replace(/'/g, "\\'");
+        const escapedTask = (item.task.task || '').replace(/'/g, "\\'");
+        const escapedEmp = (item.task.employee_name || '').replace(/'/g, "\\'");
+        const taskId = item.task.id;
+        const badgeLabel = item.category === 'past_due' ? 'PAST DUE' : item.category === 'due_today' ? 'DUE TODAY' : 'HIGH PRIORITY';
+        const badgeClass = item.category === 'past_due' ? 'badge-pastdue' : item.category === 'due_today' ? 'badge-today' : 'badge-high';
+
+        // Extract priority and overdue/time text
+        const priorityText = (item.task.priority || 'High') + ' Priority';
+        let detailText = item.metaText;
+        if (detailText.includes('·')) {
+            detailText = detailText.split('·').slice(1).join('·').trim();
+        }
+
         return `
             <div class="px-alert-item ${item.urgency}" data-category="${item.category}" data-priority="${item.priority}">
-                <span class="px-alert-dot">${item.urgencyDot}</span>
                 <div class="px-alert-body">
-                    <div class="px-alert-task-name" title="${item.task.task}">${item.task.task}</div>
-                    <div class="px-alert-meta">${item.metaText}</div>
+                    <div class="px-alert-title-row">
+                        <span class="px-alert-badge ${badgeClass}">${badgeLabel}</span>
+                        <span class="px-alert-task-name" title="${escapeHtml(item.task.task)}">${escapeHtml(item.task.task)}</span>
+                    </div>
+                    <div class="px-alert-meta">
+                        <span style="font-weight:600; color:#334155;">${escapeHtml(item.task.employee_name)}</span>
+                        <span>·</span>
+                        <span>${escapeHtml(priorityText)}</span>
+                        <span>·</span>
+                        <span>${escapeHtml(detailText)}</span>
+                    </div>
                 </div>
                 <div class="px-alert-actions">
-                    <button onclick="sendReminder('${escapedEmp}', '${escapedTask}')" class="px-btn-remind">
+                    <button type="button" onclick="openTaskDetails(${taskId})" class="px-btn-view-task" title="View full task details, comments & activity">
+                        <span class="material-symbols-outlined">visibility</span>
+                        <span>View Task</span>
+                    </button>
+                    <button type="button" onclick="sendReminder('${escapedEmp}', '${escapedTask}')" class="px-btn-remind" title="Send reminder via Gmail">
                         <span class="material-symbols-outlined">send</span>
-                        Send Reminder
+                        <span>Send Reminder</span>
                     </button>
                 </div>
             </div>
@@ -446,6 +469,9 @@ function hydrateDashboard() {
             allAttentionModalContainer.innerHTML = alertItems.map(renderAlertItem).join('');
         }
     }
+
+    // 7. Load Recent Team Activity
+    loadRecentTeamActivity();
 }
 
 // Simple hash function to generate consistent colors based on strings
@@ -834,25 +860,7 @@ document.querySelectorAll('.px-filter-btn').forEach(btn => {
             container.innerHTML = '<div class="px-empty">No tasks match this filter.</div>';
         } else {
             const display = filtered.slice(0, 4);
-            container.innerHTML = display.map(item => {
-                const escapedTask = item.task.task.replace(/'/g, "\\'");
-                const escapedEmp = item.task.employee_name.replace(/'/g, "\\'");
-                return `
-                    <div class="px-alert-item ${item.urgency}" data-category="${item.category}" data-priority="${item.priority}">
-                        <span class="px-alert-dot">${item.urgencyDot}</span>
-                        <div class="px-alert-body">
-                            <div class="px-alert-task-name" title="${item.task.task}">${item.task.task}</div>
-                            <div class="px-alert-meta">${item.metaText}</div>
-                        </div>
-                        <div class="px-alert-actions">
-                            <button onclick="sendReminder('${escapedEmp}', '${escapedTask}')" class="px-btn-remind">
-                                <span class="material-symbols-outlined">send</span>
-                                Send Reminder
-                            </button>
-                        </div>
-                    </div>
-                `;
-            }).join('');
+            container.innerHTML = display.map(renderAlertItem).join('');
         }
 
         // Update View All button visibility
@@ -1019,3 +1027,541 @@ function selectCalendarDay(day, tasks) {
 
     panel.classList.remove('hidden');
 }
+
+
+// ============================================================
+// PHOENIX - TASK DETAILS CENTERED MODAL & COMMENTS / ACTIVITY ENGINE (MANAGER)
+// ============================================================
+
+let currentModalTaskId = null;
+let pendingCommentIdToDelete = null;
+
+function getCurrentUser() {
+    try {
+        const stored = localStorage.getItem('phoenix_user');
+        if (stored) {
+            const parsed = JSON.parse(stored);
+            if (parsed && parsed.email) return parsed;
+        }
+    } catch (e) {}
+    return {
+        name: 'Prapti Chavan',
+        email: 'prapti.chavan25@gmail.com',
+        role: 'project_manager',
+        department: 'Project Management'
+    };
+}
+
+// Open Task Details Modal
+async function openTaskDetails(taskId) {
+    if (!taskId) return;
+    currentModalTaskId = taskId;
+
+    const backdrop = document.getElementById('pxTaskModalBackdrop');
+    if (!backdrop) return;
+
+    document.body.classList.add('px-modal-open');
+    backdrop.classList.add('active');
+
+    // Reset fields to loading placeholders
+    const titleEl = document.getElementById('pxModalTitle');
+    const assigneeEl = document.getElementById('pxModalAssignee');
+    const assigneeEmailEl = document.getElementById('pxModalAssigneeEmail');
+    const assignedByEl = document.getElementById('pxModalAssignedBy');
+    const deadlineEl = document.getElementById('pxModalDeadline');
+    const lifecycleEl = document.getElementById('pxModalLifecycleText');
+    const lifecycleSubEl = document.getElementById('pxModalLifecycleSub');
+    const descEl = document.getElementById('pxModalDescription');
+    const commentsListEl = document.getElementById('pxModalCommentsList');
+    const activityTimelineEl = document.getElementById('pxModalActivityTimeline');
+
+    if (titleEl) titleEl.textContent = 'Loading task...';
+    if (assigneeEl) assigneeEl.textContent = '...';
+    if (assigneeEmailEl) assigneeEmailEl.textContent = '...';
+    if (assignedByEl) assignedByEl.textContent = 'Prapti Chavan';
+    if (deadlineEl) deadlineEl.textContent = '...';
+    if (lifecycleEl) lifecycleEl.textContent = '...';
+    if (descEl) descEl.textContent = 'Loading description...';
+    if (commentsListEl) commentsListEl.innerHTML = '<div style="text-align:center; padding:16px; color:#94A3B8; font-size:12.5px;">Loading comments...</div>';
+    if (activityTimelineEl) activityTimelineEl.innerHTML = '<div style="text-align:center; padding:16px; color:#94A3B8; font-size:12.5px;">Loading activity timeline...</div>';
+
+    const user = getCurrentUser();
+
+    try {
+        const resp = await fetch(`http://127.0.0.1:5001/tasks/id/${taskId}?user_email=${encodeURIComponent(user.email)}`);
+        const data = await resp.json();
+
+        if (resp.ok && data.success && data.task) {
+            const t = data.task;
+            if (titleEl) titleEl.textContent = t.task || 'Untitled Task';
+            if (assigneeEl) assigneeEl.textContent = t.employee_name || 'Unassigned';
+            
+            // Look up employee email from loaded directory
+            const matchedEmp = (allEmployees || []).find(e => (e.name || '').toLowerCase() === (t.employee_name || '').toLowerCase());
+            const empEmail = matchedEmp ? matchedEmp.email : (t.employee_name ? `${t.employee_name.toLowerCase().replace(/\s+/g, '.')}@phoenix.com` : '—');
+            if (assigneeEmailEl) assigneeEmailEl.textContent = empEmail;
+
+            if (assignedByEl) assignedByEl.textContent = t.assigned_by || 'Prapti Chavan';
+            if (descEl) descEl.textContent = t.task || 'No detailed description provided.';
+
+            // Format deadline nicely: "05 Sep 2026 · 6:00 PM IST"
+            let formattedDeadline = t.deadline || '—';
+            if (t.deadline) {
+                const dt = parseDeadlineDate(t.deadline);
+                if (dt && !isNaN(dt)) {
+                    formattedDeadline = dt.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) + ' · ' +
+                                        dt.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }) + ' IST';
+                }
+            }
+            if (deadlineEl) deadlineEl.textContent = formattedDeadline;
+
+            const priority = (t.priority || 'High').toUpperCase();
+            const rawStatus = (t.status || 'Assigned').trim();
+            const isOverdue = isTaskOverdue(t);
+
+            const prioBadge = document.getElementById('pxModalPriorityBadge');
+            if (prioBadge) {
+                prioBadge.textContent = priority;
+                prioBadge.className = `px-badge-tag ${priority === 'HIGH' ? 'px-badge-high' : priority === 'MEDIUM' ? 'px-badge-medium' : 'px-badge-low'}`;
+            }
+
+            const statusBadge = document.getElementById('pxModalStatusBadge');
+            if (statusBadge) {
+                if (isOverdue) {
+                    statusBadge.textContent = 'PAST DUE';
+                    statusBadge.className = 'px-badge-tag px-badge-pastdue';
+                } else if (rawStatus.toLowerCase() === 'completed') {
+                    statusBadge.textContent = 'COMPLETED';
+                    statusBadge.className = 'px-badge-tag px-badge-completed';
+                } else if (rawStatus.toLowerCase() === 'in progress') {
+                    statusBadge.textContent = 'IN PROGRESS';
+                    statusBadge.className = 'px-badge-tag px-badge-progress';
+                } else {
+                    statusBadge.textContent = 'ASSIGNED';
+                    statusBadge.className = 'px-badge-tag px-badge-assigned';
+                }
+            }
+
+            // Lifecycle indicator
+            if (lifecycleEl && lifecycleSubEl) {
+                if (rawStatus.toLowerCase() === 'completed') {
+                    lifecycleEl.textContent = 'Assigned → In Progress → Completed';
+                    lifecycleSubEl.textContent = 'Task successfully finished';
+                } else if (rawStatus.toLowerCase() === 'in progress') {
+                    lifecycleEl.textContent = 'Assigned → In Progress';
+                    lifecycleSubEl.textContent = 'Currently in progress';
+                } else {
+                    lifecycleEl.textContent = 'Assigned';
+                    lifecycleSubEl.textContent = 'Pending acceptance/start';
+                }
+            }
+        } else {
+            if (titleEl) titleEl.textContent = 'Task Not Found';
+        }
+    } catch (e) {
+        console.error('Error fetching task details:', e);
+    }
+
+    await Promise.all([
+        loadTaskComments(taskId),
+        loadTaskActivity(taskId)
+    ]);
+}
+
+// Close Task Details Modal
+function closeTaskDetails() {
+    currentModalTaskId = null;
+    const backdrop = document.getElementById('pxTaskModalBackdrop');
+    if (backdrop) backdrop.classList.remove('active');
+    document.body.classList.remove('px-modal-open');
+}
+
+// Load Task Comments
+async function loadTaskComments(taskId) {
+    const listEl = document.getElementById('pxModalCommentsList');
+    const countEl = document.getElementById('pxModalCommentsCount');
+    if (!listEl) return;
+
+    const user = getCurrentUser();
+
+    try {
+        const resp = await fetch(`http://127.0.0.1:5001/tasks/${taskId}/comments?user_email=${encodeURIComponent(user.email)}`);
+        const data = await resp.json();
+
+        if (resp.ok && data.success) {
+            const comments = data.comments || [];
+            if (countEl) countEl.textContent = comments.length;
+
+            if (comments.length === 0) {
+                listEl.innerHTML = '<div style="text-align:center; padding:14px; color:#94A3B8; font-size:12.5px;">No comments yet. Start the conversation about this task.</div>';
+                return;
+            }
+
+            listEl.innerHTML = comments.map(c => {
+                const isAuthor = (c.user_email || '').toLowerCase() === (user.email || '').toLowerCase();
+                const initials = getInitials(c.user_name);
+                const roleLabel = (c.user_role || '').toLowerCase() === 'project_manager' ? 'Project Manager' : 'Employee';
+                const avatarClass = (c.user_role || '').toLowerCase() === 'project_manager' ? '' : 'emp-avatar';
+                const timeFormatted = formatTimestamp(c.created_at);
+
+                return `
+                    <div class="px-comment-item" id="comment-item-${c.id}">
+                        <div class="px-comment-avatar ${avatarClass}">${initials}</div>
+                        <div class="px-comment-content">
+                            <div class="px-comment-header">
+                                <div class="px-comment-user-info">
+                                    <span class="px-comment-user-name">${escapeHtml(c.user_name)}</span>
+                                    <span class="px-comment-role-tag">${roleLabel}</span>
+                                </div>
+                                <div style="display:flex; align-items:center; gap:8px;">
+                                    <span class="px-comment-time">${timeFormatted}</span>
+                                    ${isAuthor ? `
+                                        <div class="px-comment-menu-wrap">
+                                            <button type="button" class="px-comment-menu-btn" onclick="toggleCommentMenu(${c.id}, event)" title="Comment options">•••</button>
+                                            <div id="comment-dropdown-${c.id}" class="px-comment-dropdown">
+                                                <button type="button" class="px-comment-dropdown-item" onclick="startEditComment(${c.id}, '${escapeHtml(c.comment).replace(/'/g, "\\'")}')">
+                                                    <span class="material-symbols-outlined" style="font-size:13px;">edit</span> Edit
+                                                </button>
+                                                <button type="button" class="px-comment-dropdown-item delete" onclick="promptDeleteComment(${c.id})">
+                                                    <span class="material-symbols-outlined" style="font-size:13px;">delete</span> Delete
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ` : ''}
+                                </div>
+                            </div>
+                            <div id="comment-text-${c.id}" class="px-comment-text">${escapeHtml(c.comment)}</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        } else {
+            listEl.innerHTML = '<div style="text-align:center; padding:12px; color:#E11D48; font-size:12.5px;">Unable to load comments. Try again.</div>';
+        }
+    } catch (e) {
+        console.error('Error loading comments:', e);
+        listEl.innerHTML = '<div style="text-align:center; padding:12px; color:#E11D48; font-size:12.5px;">Unable to load comments. Try again.</div>';
+    }
+}
+
+// Load Task Activity
+async function loadTaskActivity(taskId) {
+    const timelineEl = document.getElementById('pxModalActivityTimeline');
+    if (!timelineEl) return;
+
+    const user = getCurrentUser();
+
+    try {
+        const resp = await fetch(`http://127.0.0.1:5001/tasks/${taskId}/activity?user_email=${encodeURIComponent(user.email)}`);
+        const data = await resp.json();
+
+        if (resp.ok && data.success) {
+            const activities = data.activity || [];
+            if (activities.length === 0) {
+                timelineEl.innerHTML = '<div style="text-align:center; padding:14px; color:#94A3B8; font-size:12.5px;">No activity recorded yet.</div>';
+                return;
+            }
+
+            timelineEl.innerHTML = activities.map(a => {
+                const timeFormatted = formatTimestamp(a.created_at);
+                return `
+                    <div class="px-tmodal-activity-item">
+                        <div class="px-tmodal-activity-dot"></div>
+                        <div class="px-tmodal-activity-desc">${escapeHtml(a.activity_description)}</div>
+                        <div class="px-tmodal-activity-time">${timeFormatted}</div>
+                    </div>
+                `;
+            }).join('');
+        } else {
+            timelineEl.innerHTML = '<div style="text-align:center; padding:12px; color:#94A3B8; font-size:12.5px;">Unable to load activity. Try again.</div>';
+        }
+    } catch (e) {
+        console.error('Error loading task activity:', e);
+    }
+}
+
+// Send Comment
+async function submitComment() {
+    if (!currentModalTaskId) return;
+
+    const input = document.getElementById('pxNewCommentInput');
+    const sendBtn = document.getElementById('pxSendCommentBtn');
+    const text = input ? input.value.trim() : '';
+
+    if (!text) return;
+
+    const user = getCurrentUser();
+    if (sendBtn) {
+        sendBtn.disabled = true;
+        sendBtn.innerHTML = '<span class="material-symbols-outlined" style="font-size:15px;">hourglass_empty</span> Posting...';
+    }
+
+    try {
+        const resp = await fetch(`http://127.0.0.1:5001/tasks/${currentModalTaskId}/comments`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                comment: text,
+                user_email: user.email,
+                user_name: user.name,
+                user_role: user.role
+            })
+        });
+
+        const data = await resp.json();
+        if (resp.ok && data.success) {
+            if (input) input.value = '';
+            await loadTaskComments(currentModalTaskId);
+            await loadTaskActivity(currentModalTaskId);
+            if (typeof loadRecentTeamActivity === 'function') {
+                loadRecentTeamActivity();
+            }
+        } else {
+            alert(data.message || 'Unable to post comment. Please try again.');
+        }
+    } catch (e) {
+        alert('Unable to post comment. Please try again.');
+    } finally {
+        if (sendBtn) {
+            sendBtn.disabled = false;
+            sendBtn.innerHTML = '<span class="material-symbols-outlined">send</span> <span>Post Comment</span>';
+        }
+    }
+}
+
+// Dropdown Action Menu Toggle
+function toggleCommentMenu(commentId, event) {
+    if (event) event.stopPropagation();
+    document.querySelectorAll('.px-comment-dropdown').forEach(d => {
+        if (d.id !== `comment-dropdown-${commentId}`) d.classList.remove('show');
+    });
+    const dropdown = document.getElementById(`comment-dropdown-${commentId}`);
+    if (dropdown) dropdown.classList.toggle('show');
+}
+
+// Start Inline Comment Editing
+function startEditComment(commentId, currentText) {
+    document.querySelectorAll('.px-comment-dropdown').forEach(d => d.classList.remove('show'));
+
+    const textEl = document.getElementById(`comment-text-${commentId}`);
+    if (!textEl) return;
+
+    textEl.innerHTML = `
+        <div class="px-comment-edit-box">
+            <textarea id="edit-textarea-${commentId}" class="px-comment-edit-textarea">${escapeHtml(currentText)}</textarea>
+            <div class="px-comment-edit-actions">
+                <button type="button" class="px-modal-btn-cancel" onclick="cancelEditComment(${commentId}, '${escapeHtml(currentText).replace(/'/g, "\\'")}')">Cancel</button>
+                <button type="button" class="px-btn-post-comment" onclick="saveEditComment(${commentId})">Save</button>
+            </div>
+        </div>
+    `;
+}
+
+function cancelEditComment(commentId, originalText) {
+    const textEl = document.getElementById(`comment-text-${commentId}`);
+    if (textEl) textEl.textContent = originalText;
+}
+
+async function saveEditComment(commentId) {
+    const textarea = document.getElementById(`edit-textarea-${commentId}`);
+    if (!textarea) return;
+    const newText = textarea.value.trim();
+    if (!newText) return;
+
+    const user = getCurrentUser();
+    try {
+        const resp = await fetch(`http://127.0.0.1:5001/tasks/${currentModalTaskId}/comments/${commentId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                comment: newText,
+                user_email: user.email
+            })
+        });
+
+        const data = await resp.json();
+        if (resp.ok && data.success) {
+            await loadTaskComments(currentModalTaskId);
+            await loadTaskActivity(currentModalTaskId);
+            if (typeof loadRecentTeamActivity === 'function') loadRecentTeamActivity();
+        } else {
+            alert(data.message || 'Failed to update comment.');
+        }
+    } catch (e) {
+        alert('Network error updating comment.');
+    }
+}
+
+// Delete Comment Confirmation Modal
+function promptDeleteComment(commentId) {
+    document.querySelectorAll('.px-comment-dropdown').forEach(d => d.classList.remove('show'));
+    pendingCommentIdToDelete = commentId;
+    const modal = document.getElementById('pxDeleteCommentModal');
+    if (modal) modal.classList.add('active');
+}
+
+function cancelDeleteComment() {
+    pendingCommentIdToDelete = null;
+    const modal = document.getElementById('pxDeleteCommentModal');
+    if (modal) modal.classList.remove('active');
+}
+
+async function confirmDeleteComment() {
+    if (!pendingCommentIdToDelete || !currentModalTaskId) return;
+
+    const commentId = pendingCommentIdToDelete;
+    const user = getCurrentUser();
+
+    try {
+        const resp = await fetch(`http://127.0.0.1:5001/tasks/${currentModalTaskId}/comments/${commentId}`, {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_email: user.email })
+        });
+
+        const data = await resp.json();
+        cancelDeleteComment();
+
+        if (resp.ok && data.success) {
+            await loadTaskComments(currentModalTaskId);
+            await loadTaskActivity(currentModalTaskId);
+            if (typeof loadRecentTeamActivity === 'function') loadRecentTeamActivity();
+        } else {
+            alert(data.message || 'Failed to delete comment.');
+        }
+    } catch (e) {
+        cancelDeleteComment();
+        alert('Network error deleting comment.');
+    }
+}
+
+// Manager Dashboard - Load Recent Team Activity
+async function loadRecentTeamActivity() {
+    const container = document.getElementById('recentActivityContainer');
+    if (!container) return;
+
+    try {
+        const resp = await fetch('http://127.0.0.1:5001/activity/recent');
+        const data = await resp.json();
+
+        if (resp.ok && data.success) {
+            const activities = data.activities || [];
+            if (activities.length === 0) {
+                container.innerHTML = '<div style="text-align:center; padding:14px; color:#94A3B8; font-size:12.5px;">No recent activity recorded yet.</div>';
+                return;
+            }
+
+            container.innerHTML = activities.map(a => {
+                const icon = a.activity_type.includes('COMMENT') ? 'chat_bubble' : 'published_with_changes';
+                const timeFormatted = formatTimestamp(a.created_at);
+                return `
+                    <div class="px-recent-activity-item" onclick="openTaskDetails(${a.task_id})">
+                        <div class="px-recent-activity-icon">
+                            <span class="material-symbols-outlined">${icon}</span>
+                        </div>
+                        <div class="px-recent-activity-content">
+                            <div class="px-recent-activity-actor">${escapeHtml(a.actor_name)}</div>
+                            <div class="px-recent-activity-text">${escapeHtml(a.activity_description)}</div>
+                            <div class="px-recent-activity-time">${timeFormatted} · "${escapeHtml(a.task_title)}"</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        } else {
+            container.innerHTML = '<div style="text-align:center; padding:12px; color:#94A3B8; font-size:12.5px;">Unable to load recent activity</div>';
+        }
+    } catch (e) {
+        console.error('Error loading recent team activity:', e);
+    }
+}
+
+// Utility Helpers
+function getInitials(name) {
+    if (!name) return 'U';
+    const parts = name.trim().split(/\s+/);
+    if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    return parts[0].substring(0, 2).toUpperCase();
+}
+
+function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+function formatTimestamp(isoStr) {
+    if (!isoStr) return '';
+    try {
+        const d = new Date(isoStr.includes('T') ? isoStr : isoStr.replace(' ', 'T'));
+        if (isNaN(d)) return isoStr;
+        const now = new Date();
+        const diffMs = now - d;
+        const diffMins = Math.floor(diffMs / (1000 * 60));
+        const diffHrs = Math.floor(diffMs / (1000 * 60 * 60));
+
+        if (diffMins < 1) return 'Just now';
+        if (diffMins < 60) return `${diffMins} min ago`;
+        if (diffHrs < 24 && d.toDateString() === now.toDateString()) {
+            return 'Today · ' + d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+        }
+        return d.toLocaleDateString('en-IN', { month: 'short', day: 'numeric' }) + ' · ' +
+               d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+    } catch (e) {
+        return isoStr;
+    }
+}
+
+// Bind Global Task Details Modal Event Listeners
+document.addEventListener('DOMContentLoaded', function () {
+    const backdrop = document.getElementById('pxTaskModalBackdrop');
+    const closeBtn = document.getElementById('pxCloseTaskModalBtn');
+    const sendBtn = document.getElementById('pxSendCommentBtn');
+    const commentInput = document.getElementById('pxNewCommentInput');
+    const refreshActBtn = document.getElementById('refreshActivityBtn');
+    const cancelDelBtn = document.getElementById('pxCancelDeleteCommentBtn');
+    const confirmDelBtn = document.getElementById('pxConfirmDeleteCommentBtn');
+    const deleteModal = document.getElementById('pxDeleteCommentModal');
+
+    if (backdrop) {
+        backdrop.addEventListener('click', function (e) {
+            if (e.target === backdrop) closeTaskDetails();
+        });
+    }
+    if (closeBtn) closeBtn.addEventListener('click', closeTaskDetails);
+    if (sendBtn) sendBtn.addEventListener('click', submitComment);
+    if (refreshActBtn) refreshActBtn.addEventListener('click', loadRecentTeamActivity);
+    if (cancelDelBtn) cancelDelBtn.addEventListener('click', cancelDeleteComment);
+    if (confirmDelBtn) confirmDelBtn.addEventListener('click', confirmDeleteComment);
+
+    if (deleteModal) {
+        deleteModal.addEventListener('click', function (e) {
+            if (e.target === deleteModal) cancelDeleteComment();
+        });
+    }
+
+    if (commentInput) {
+        commentInput.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                e.preventDefault();
+                submitComment();
+            }
+        });
+    }
+
+    document.addEventListener('click', function (e) {
+        if (!e.target.closest('.px-comment-menu-wrap')) {
+            document.querySelectorAll('.px-comment-dropdown').forEach(d => d.classList.remove('show'));
+        }
+    });
+
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') {
+            closeTaskDetails();
+            cancelDeleteComment();
+        }
+    });
+});
