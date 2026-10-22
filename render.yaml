@@ -1,0 +1,62 @@
+# render.yaml — PHOENIX Infrastructure as Code for Render.com
+# Docs: https://render.com/docs/blueprint-spec
+#
+# This file defines one Web Service (the Flask/gunicorn backend).
+# The frontend (static HTML/CSS/JS) should be deployed as a separate
+# Static Site on Render (or any other static host like Vercel/Netlify).
+#
+# To deploy:
+#   1. Push this repository to GitHub.
+#   2. Go to https://dashboard.render.com → "New" → "Blueprint".
+#   3. Connect your GitHub repo and select this file.
+#   4. Fill in the secret env var values when prompted.
+
+services:
+  - type: web
+    name: phoenix-backend
+    runtime: python
+    region: oregon               # Change to: frankfurt | singapore | ohio
+    plan: free                   # Change to 'starter' for always-on (no spin-down)
+
+    # Build step: install Python dependencies
+    buildCommand: pip install -r backend/requirements.txt
+
+    # Start step: cd into backend so gunicorn.conf.py and app.py are in the cwd
+    startCommand: cd backend && gunicorn -c gunicorn.conf.py app:app
+
+    # Render injects PORT automatically; gunicorn.conf.py reads it.
+    # healthCheckPath: /health    # Uncomment if you want Render to verify /health
+
+    envVars:
+      # ---------- Required — set real values in the Render dashboard ----------
+      - key: SECRET_KEY
+        generateValue: true      # Render generates a random value on first deploy
+
+      - key: GMAIL_ADDRESS
+        sync: false              # Prompt in dashboard — never commit real value
+
+      - key: GMAIL_APP_PASSWORD
+        sync: false
+
+      - key: OPENAI_API_KEY
+        sync: false
+
+      # ---------- Required for production security ----------------------------
+      - key: ENVIRONMENT
+        value: production
+
+      - key: FLASK_DEBUG
+        value: "False"
+
+      # ---------- CORS — set to your frontend origin after deploying it -------
+      # Example: https://phoenix-frontend.onrender.com
+      - key: ALLOWED_ORIGINS
+        sync: false
+
+      # ---------- Rate limiting — memory is fine for a single free instance ---
+      # Upgrade to redis:// if you scale to multiple workers
+      - key: RATELIMIT_STORAGE_URI
+        value: memory://
+
+      - key: LOG_LEVEL
+        value: info

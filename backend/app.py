@@ -36,15 +36,21 @@ app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 if os.environ.get('ENVIRONMENT', 'development').lower() == 'production':
     app.config['SESSION_COOKIE_SECURE'] = True
 
-# CORS configuration (strictly restricted trusted origins without 'null')
-CORS(app, supports_credentials=True, origins=[
-    'http://127.0.0.1:8090',
-    'http://localhost:8090',
-    'http://127.0.0.1:8080',
-    'http://localhost:8080',
-    'http://127.0.0.1:5500',
-    'http://localhost:5500'
-])
+# CORS configuration — origins loaded from env var for production flexibility
+# Set ALLOWED_ORIGINS to a comma-separated list of trusted frontend URLs.
+# Example: https://phoenix-frontend.onrender.com,https://myapp.vercel.app
+_default_dev_origins = [
+    'http://127.0.0.1:8090', 'http://localhost:8090',
+    'http://127.0.0.1:8080', 'http://localhost:8080',
+    'http://127.0.0.1:5500', 'http://localhost:5500',
+]
+_allowed_origins_env = os.environ.get('ALLOWED_ORIGINS', '')
+_allowed_origins = (
+    [o.strip() for o in _allowed_origins_env.split(',') if o.strip()]
+    if _allowed_origins_env
+    else _default_dev_origins
+)
+CORS(app, supports_credentials=True, origins=_allowed_origins)
 
 # Rate limiting configuration (configurable storage backend, defaults to memory)
 ratelimit_storage_uri = os.environ.get('RATELIMIT_STORAGE_URI', 'memory://')
