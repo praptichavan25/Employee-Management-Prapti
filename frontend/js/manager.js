@@ -36,7 +36,7 @@ function isTaskOverdue(task) {
 // Load employees dynamically from backend
 async function fetchEmployees(selectedName = '') {
     try {
-        const response = await fetch('http://127.0.0.1:5001/employees');
+        const response = await fetch('http://127.0.0.1:5001/employees', { credentials: 'include' });
         const data = await response.json();
 
         if (response.ok && data.success) {
@@ -70,7 +70,7 @@ async function loadAllTasks() {
     // Call GET /tasks/<employee> for each employee to aggregate
     const fetchPromises = allEmployees.map(async (emp) => {
         try {
-            const response = await fetch(`http://127.0.0.1:5001/tasks/${encodeURIComponent(emp.name)}`);
+            const response = await fetch(`http://127.0.0.1:5001/tasks/${encodeURIComponent(emp.name)}`, { credentials: 'include' });
             const data = await response.json();
             if (response.ok && data.success) {
                 return data.tasks || [];
@@ -532,6 +532,7 @@ if (addEmployeeForm) {
         try {
             const response = await fetch('http://127.0.0.1:5001/add-employee', {
                 method: 'POST',
+                credentials: 'include',
                 headers: {
                     'Content-Type': 'application/json'
                 },
@@ -628,6 +629,7 @@ async function generateAIEmail() {
     try {
         const response = await fetch('http://127.0.0.1:5001/generate-ai-email', {
             method: 'POST',
+            credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 employee_name: employee,
@@ -786,6 +788,7 @@ document.getElementById('taskForm').addEventListener('submit', async function (e
 
         const response = await fetch('http://127.0.0.1:5001/assign-task', {
             method: 'POST',
+            credentials: 'include',
             headers: {
                 'Content-Type': 'application/json'
             },
@@ -1088,7 +1091,7 @@ async function openTaskDetails(taskId) {
     const user = getCurrentUser();
 
     try {
-        const resp = await fetch(`http://127.0.0.1:5001/tasks/id/${taskId}?user_email=${encodeURIComponent(user.email)}`);
+        const resp = await fetch(`http://127.0.0.1:5001/tasks/id/${taskId}?user_email=${encodeURIComponent(user.email)}`, { credentials: 'include' });
         const data = await resp.json();
 
         if (resp.ok && data.success && data.task) {
@@ -1185,7 +1188,7 @@ async function loadTaskComments(taskId) {
     const user = getCurrentUser();
 
     try {
-        const resp = await fetch(`http://127.0.0.1:5001/tasks/${taskId}/comments?user_email=${encodeURIComponent(user.email)}`);
+        const resp = await fetch(`http://127.0.0.1:5001/tasks/${taskId}/comments?user_email=${encodeURIComponent(user.email)}`, { credentials: 'include' });
         const data = await resp.json();
 
         if (resp.ok && data.success) {
@@ -1252,7 +1255,7 @@ async function loadTaskActivity(taskId) {
     const user = getCurrentUser();
 
     try {
-        const resp = await fetch(`http://127.0.0.1:5001/tasks/${taskId}/activity?user_email=${encodeURIComponent(user.email)}`);
+        const resp = await fetch(`http://127.0.0.1:5001/tasks/${taskId}/activity?user_email=${encodeURIComponent(user.email)}`, { credentials: 'include' });
         const data = await resp.json();
 
         if (resp.ok && data.success) {
@@ -1299,6 +1302,7 @@ async function submitComment() {
     try {
         const resp = await fetch(`http://127.0.0.1:5001/tasks/${currentModalTaskId}/comments`, {
             method: 'POST',
+            credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 comment: text,
@@ -1372,6 +1376,7 @@ async function saveEditComment(commentId) {
     try {
         const resp = await fetch(`http://127.0.0.1:5001/tasks/${currentModalTaskId}/comments/${commentId}`, {
             method: 'PATCH',
+            credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 comment: newText,
@@ -1415,6 +1420,7 @@ async function confirmDeleteComment() {
     try {
         const resp = await fetch(`http://127.0.0.1:5001/tasks/${currentModalTaskId}/comments/${commentId}`, {
             method: 'DELETE',
+            credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ user_email: user.email })
         });
@@ -1441,7 +1447,7 @@ async function loadRecentTeamActivity() {
     if (!container) return;
 
     try {
-        const resp = await fetch('http://127.0.0.1:5001/activity/recent');
+        const resp = await fetch('http://127.0.0.1:5001/activity/recent', { credentials: 'include' });
         const data = await resp.json();
 
         if (resp.ok && data.success) {

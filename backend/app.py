@@ -3,27 +3,99 @@ import sys
 import json
 import sqlite3
 from datetime import datetime
-from flask import Flask, request, jsonify
+from functools import wraps
+from flask import Flask, request, jsonify, session
 from flask_cors import CORS
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+from dotenv import load_dotenv
+from werkzeug.security import check_password_hash
 
 BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
 if BACKEND_DIR not in sys.path:
     sys.path.insert(0, BACKEND_DIR)
 
+# Load environment variables
+load_dotenv(os.path.join(BACKEND_DIR, '.env'))
+
 from email_service import send_task_email
 from ai_email_service import generate_task_email
 
 app = Flask(__name__)
-CORS(app)
+# Secret key management: use env variable or development fallback
+secret_key_env = os.environ.get('SECRET_KEY')
+if secret_key_env:
+    app.config['SECRET_KEY'] = secret_key_env
+else:
+    if os.environ.get('ENVIRONMENT', 'development').lower() == 'production' and not app.debug:
+        raise RuntimeError("CRITICAL: SECRET_KEY environment variable must be set in production!")
+    app.config['SECRET_KEY'] = 'phoenix-development-fallback-key-32bytes-min-len'
 
-BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+if os.environ.get('ENVIRONMENT', 'development').lower() == 'production':
+    app.config['SESSION_COOKIE_SECURE'] = True
+
+# CORS configuration (strictly restricted trusted origins without 'null')
+CORS(app, supports_credentials=True, origins=[
+    'http://127.0.0.1:8090',
+    'http://localhost:8090',
+    'http://127.0.0.1:8080',
+    'http://localhost:8080',
+    'http://127.0.0.1:5500',
+    'http://localhost:5500'
+])
+
+# Rate limiting configuration (configurable storage backend, defaults to memory)
+ratelimit_storage_uri = os.environ.get('RATELIMIT_STORAGE_URI', 'memory://')
+limiter = Limiter(
+    get_remote_address,
+    app=app,
+    default_limits=[],
+    storage_uri=ratelimit_storage_uri,
+    strategy='fixed-window',
+    headers_enabled=True
+)
+
+
+@app.errorhandler(429)
+def ratelimit_handler(e):
+    """Clean JSON response for rate limit violations with standard Retry-After headers."""
+    return jsonify({
+        'success': False,
+        'message': f'Too many requests: {e.description}. Please slow down.'
+    }), 429
+
+
 DATA_PATH = os.path.join(BACKEND_DIR, 'data', 'employees.json')
 DB_PATH = os.path.join(BACKEND_DIR, 'phoenix.db')
+
+
+@app.after_request
+def add_security_headers(response):
+    """Adds standard security headers to all HTTP responses."""
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['X-Frame-Options'] = 'DENY'
+    response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+    return response
+
+
+def get_db():
+    """Returns a SQLite connection with foreign keys enabled."""
+    conn = sqlite3.connect(DB_PATH)
+    conn.execute("PRAGMA foreign_keys = ON;")
+    conn.row_factory = sqlite3.Row
+    return conn
 
 
 def init_db():
     """Initializes the SQLite database, creates tasks, meetings, task_comments, and task_activity tables."""
     conn = sqlite3.connect(DB_PATH)
+    conn.execute("PRAGMA foreign_keys = ON;")
+    try:
+        conn.execute("PRAGMA journal_mode = WAL;")
+    except Exception:
+        pass
     cursor = conn.cursor()
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS tasks (
@@ -103,7 +175,7 @@ init_db()
 
 
 def get_user_info(user_identifier):
-    """Finds user info from employees.json by email or name."""
+    """Finds user info from employees.json by email or name. Supports administrator, project_manager, and employee roles."""
     if not os.path.exists(DATA_PATH) or not user_identifier:
         return None
 
@@ -111,6 +183,17 @@ def get_user_info(user_identifier):
         data = json.load(f)
 
     clean_id = str(user_identifier).strip().lower()
+
+    for admin in data.get('administrators', []):
+        a_email = admin.get('email', '').strip().lower()
+        a_name = admin.get('name', '').strip().lower()
+        if clean_id == a_email or clean_id == a_name:
+            return {
+                'name': admin.get('name'),
+                'email': admin.get('email'),
+                'role': 'administrator',
+                'department': admin.get('department')
+            }
 
     for pm in data.get('project_managers', []):
         pm_email = pm.get('email', '').strip().lower()
@@ -174,27 +257,114 @@ def get_employee_email(employee_name):
 
 
 def validate_manager(manager_identifier):
-    """Validates that manager_identifier matches an authorized Project Manager from employees.json."""
+    """Validates that manager_identifier matches an authorized Project Manager or Administrator from employees.json."""
     if not os.path.exists(DATA_PATH) or not manager_identifier:
         return None
 
     with open(DATA_PATH, 'r') as f:
         data = json.load(f)
 
-    clean_id = manager_identifier.strip().lower()
+    clean_id = str(manager_identifier).strip().lower()
     for pm in data.get('project_managers', []):
         pm_name = pm.get('name', '').strip()
         pm_email = pm.get('email', '').strip().lower()
         if clean_id == pm_name.lower() or clean_id == pm_email:
             return pm_name
 
+    for admin in data.get('administrators', []):
+        admin_name = admin.get('name', '').strip()
+        admin_email = admin.get('email', '').strip().lower()
+        if clean_id == admin_name.lower() or clean_id == admin_email:
+            return admin_name
+
     return None
 
 
+def get_current_user():
+    """
+    Retrieves the currently authenticated user context.
+    Primary source: Flask session['user'].
+    Fallback (for testing or API callers with user context):
+    Checks header X-User-Email, query parameter user_email,
+    or JSON payload fields if in testing mode.
+    """
+    if 'user' in session and session['user']:
+        return session['user']
+
+    # Testing or fallback user identification
+    user_email = request.headers.get('X-User-Email') or request.args.get('user_email')
+    if not user_email and request.is_json:
+        data = request.get_json(silent=True) or {}
+        user_email = (
+            data.get('actor_email')
+            or data.get('user_email')
+            or data.get('assigned_by')
+            or data.get('employee_name')
+        )
+
+    if user_email:
+        u = get_user_info(user_email)
+        if u:
+            if app.config.get('TESTING'):
+                return u
+            return None
+
+    return None
+
+
+def login_required(f):
+    """Decorator requiring a valid authenticated session (or testing user context)."""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        user = get_current_user()
+        if not user:
+            return jsonify({
+                'success': False,
+                'message': 'Authentication required. Please log in.'
+            }), 401
+        return f(*args, **kwargs)
+    return decorated_function
+
+
+def role_required(*allowed_roles):
+    """Decorator requiring user to have one of the specified roles."""
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            user = get_current_user()
+            if not user:
+                return jsonify({
+                    'success': False,
+                    'message': 'Authentication required. Please log in.'
+                }), 401
+            user_role = (user.get('role') or '').strip().lower()
+            allowed = [r.strip().lower() for r in allowed_roles]
+            if user_role not in allowed:
+                return jsonify({
+                    'success': False,
+                    'message': 'Forbidden: Insufficient privileges for this action.'
+                }), 403
+            return f(*args, **kwargs)
+        return decorated_function
+    return decorator
+
+
+@app.route('/health', methods=['GET'])
+def health_check():
+    """Health check endpoint for production monitors and load balancers."""
+    return jsonify({
+        'status': 'healthy',
+        'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+        'service': 'PHOENIX Employee Automation Backend'
+    }), 200
+
+
 @app.route('/login', methods=['POST'])
+@limiter.limit("10 per minute; 30 per hour")
 def login():
     data = request.get_json() or {}
     email = data.get('email', '').strip().lower()
+    password = data.get('password', '')
 
     if not email:
         return jsonify({
@@ -211,31 +381,47 @@ def login():
     with open(DATA_PATH, 'r') as f:
         emp_data = json.load(f)
 
+    def _build_user_response(user_record, role):
+        """Verifies password and builds login response for a matching user record."""
+        stored_hash = user_record.get('password_hash', '')
+        if stored_hash and not check_password_hash(stored_hash, password):
+            return None, jsonify({
+                'success': False,
+                'message': 'Invalid password.'
+            }), 401
+        user_info = {
+            'name': user_record.get('name'),
+            'email': user_record.get('email'),
+            'role': role,
+            'department': user_record.get('department')
+        }
+        # Establish server-side session
+        session['user'] = user_info
+        return user_info, None, None
+
+    # Check administrators
+    for admin in emp_data.get('administrators', []):
+        if admin.get('email', '').strip().lower() == email:
+            user_info, err_resp, err_code = _build_user_response(admin, 'administrator')
+            if err_resp:
+                return err_resp, err_code
+            return jsonify({'success': True, 'user': user_info}), 200
+
     # Check project managers
     for pm in emp_data.get('project_managers', []):
         if pm.get('email', '').strip().lower() == email:
-            return jsonify({
-                'success': True,
-                'user': {
-                    'name': pm.get('name'),
-                    'email': pm.get('email'),
-                    'role': 'project_manager',
-                    'department': pm.get('department')
-                }
-            }), 200
+            user_info, err_resp, err_code = _build_user_response(pm, 'project_manager')
+            if err_resp:
+                return err_resp, err_code
+            return jsonify({'success': True, 'user': user_info}), 200
 
     # Check employees
     for emp in emp_data.get('employees', []):
         if emp.get('email', '').strip().lower() == email:
-            return jsonify({
-                'success': True,
-                'user': {
-                    'name': emp.get('name'),
-                    'email': emp.get('email'),
-                    'role': 'employee',
-                    'department': emp.get('department')
-                }
-            }), 200
+            user_info, err_resp, err_code = _build_user_response(emp, 'employee')
+            if err_resp:
+                return err_resp, err_code
+            return jsonify({'success': True, 'user': user_info}), 200
 
     return jsonify({
         'success': False,
@@ -243,8 +429,19 @@ def login():
     }), 401
 
 
+@app.route('/logout', methods=['POST'])
+def logout():
+    """Clears the server-side session cookie, invalidating the user's login state."""
+    session.clear()
+    return jsonify({'success': True, 'message': 'Logged out successfully.'}), 200
+
+
 @app.route('/employees', methods=['GET'])
 def get_employees():
+    current_user = get_current_user()
+    if not current_user and not app.config.get('TESTING'):
+        return jsonify({'success': False, 'message': 'Authentication required. Please log in.'}), 401
+
     if not os.path.exists(DATA_PATH):
         return jsonify({'success': False, 'message': 'Employee data file not found'}), 500
 
@@ -259,6 +456,16 @@ def get_employees():
 
 @app.route('/add-employee', methods=['POST'])
 def add_employee():
+    current_user = get_current_user()
+    if not current_user and not app.config.get('TESTING'):
+        return jsonify({'success': False, 'message': 'Authentication required. Please log in.'}), 401
+
+    if current_user and current_user.get('role', '').lower() not in ['project_manager', 'administrator']:
+        return jsonify({
+            'success': False,
+            'message': 'Forbidden: Only Project Managers or Administrators can register employees.'
+        }), 403
+
     data = request.get_json() or {}
     name = data.get('name', '').strip()
     email = data.get('email', '').strip().lower()
@@ -317,6 +524,7 @@ def add_employee():
 
 
 @app.route('/generate-ai-email', methods=['POST'])
+@limiter.limit("15 per minute; 60 per hour")
 def generate_ai_email():
     """
     Generates a structured AI-drafted email for a task assignment.
@@ -341,12 +549,26 @@ def generate_ai_email():
         }), 400
 
     # Validate manager identity
-    manager_name = validate_manager(assigned_by) if assigned_by else 'Prapti Chavan'
-    if not manager_name:
-        return jsonify({
-            'success': False,
-            'message': 'Unauthorized or invalid Project Manager.'
-        }), 403
+    current_user = get_current_user()
+    if current_user:
+        if current_user.get('role', '').lower() not in ['project_manager', 'administrator']:
+            return jsonify({
+                'success': False,
+                'message': 'Unauthorized or invalid Project Manager.'
+            }), 403
+        manager_name = current_user.get('name')
+    else:
+        if not assigned_by and not app.config.get('TESTING'):
+            return jsonify({
+                'success': False,
+                'message': 'Authentication required. Please log in.'
+            }), 401
+        manager_name = validate_manager(assigned_by) if assigned_by else None
+        if not manager_name:
+            return jsonify({
+                'success': False,
+                'message': 'Unauthorized or invalid Project Manager.'
+            }), 403
 
     # Build human-readable deadline string
     deadline_str = ''
@@ -390,6 +612,7 @@ def generate_ai_email():
 
 
 @app.route('/assign-task', methods=['POST'])
+@limiter.limit("30 per minute; 100 per hour")
 def assign_task():
     data = request.get_json() or {}
     employee_name = data.get('employee_name', '').strip()
@@ -435,12 +658,26 @@ def assign_task():
         }), 400
 
     # 1. Validate assigned_by manager against employees.json
-    manager_name = validate_manager(assigned_by_input) if assigned_by_input else 'Prapti Chavan'
-    if not manager_name:
-        return jsonify({
-            'success': False,
-            'message': 'Unauthorized or invalid Project Manager.'
-        }), 403
+    current_user = get_current_user()
+    if current_user:
+        if current_user.get('role', '').lower() not in ['project_manager', 'administrator']:
+            return jsonify({
+                'success': False,
+                'message': 'Unauthorized or invalid Project Manager.'
+            }), 403
+        manager_name = current_user.get('name')
+    else:
+        if not assigned_by_input and not app.config.get('TESTING'):
+            return jsonify({
+                'success': False,
+                'message': 'Authentication required. Please log in.'
+            }), 401
+        manager_name = validate_manager(assigned_by_input) if assigned_by_input else None
+        if not manager_name:
+            return jsonify({
+                'success': False,
+                'message': 'Unauthorized or invalid Project Manager.'
+            }), 403
 
     # 2. Find employee email from employees.json
     employee_email = get_employee_email(employee_name)
@@ -453,6 +690,7 @@ def assign_task():
     # 3. Store task in SQLite with assigned_by
     try:
         conn = sqlite3.connect(DB_PATH)
+        conn.execute("PRAGMA foreign_keys = ON;")
         cursor = conn.cursor()
         cursor.execute(
             'INSERT INTO tasks (employee_name, task, deadline, status, assigned_by) VALUES (?, ?, ?, ?, ?)',
@@ -514,6 +752,17 @@ def assign_task():
 
 @app.route('/tasks/<employee_name>', methods=['GET'])
 def get_employee_tasks(employee_name):
+    current_user = get_current_user()
+    if not current_user and not app.config.get('TESTING'):
+        return jsonify({'success': False, 'message': 'Authentication required. Please log in.'}), 401
+
+    if current_user and current_user.get('role', '').lower() == 'employee':
+        if current_user.get('name', '').strip().lower() != employee_name.strip().lower():
+            return jsonify({
+                'success': False,
+                'message': 'Unauthorized: You can only view your own tasks.'
+            }), 403
+
     try:
         conn = sqlite3.connect(DB_PATH)
         conn.row_factory = sqlite3.Row
@@ -555,6 +804,10 @@ def get_employee_tasks(employee_name):
 
 @app.route('/tasks/<int:task_id>/status', methods=['PATCH'])
 def update_task_status(task_id):
+    current_user = get_current_user()
+    if not current_user and not app.config.get('TESTING'):
+        return jsonify({'success': False, 'message': 'Authentication required. Please log in.'}), 401
+
     data = request.get_json() or {}
     new_status = data.get('status', '').strip()
     employee_name = data.get('employee_name', '').strip()
@@ -572,6 +825,7 @@ def update_task_status(task_id):
 
     try:
         conn = sqlite3.connect(DB_PATH)
+        conn.execute("PRAGMA foreign_keys = ON;")
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
 
@@ -589,8 +843,15 @@ def update_task_status(task_id):
                 'message': 'Task not found'
             }), 404
 
-        # Verify employee ownership if employee_name is provided in request context
-        if employee_name and task_row['employee_name'].strip().lower() != employee_name.lower():
+        # Verify employee ownership if logged in as employee or employee_name is provided in request context
+        if current_user and current_user.get('role', '').lower() == 'employee':
+            if task_row['employee_name'].strip().lower() != current_user.get('name', '').strip().lower():
+                conn.close()
+                return jsonify({
+                    'success': False,
+                    'message': 'Unauthorized: Task belongs to another employee.'
+                }), 403
+        elif employee_name and task_row['employee_name'].strip().lower() != employee_name.lower():
             conn.close()
             return jsonify({
                 'success': False,
@@ -671,6 +932,10 @@ def update_task_status(task_id):
 
 @app.route('/tasks/<int:task_id>/progress', methods=['PATCH'])
 def update_task_progress(task_id):
+    current_user = get_current_user()
+    if not current_user and not app.config.get('TESTING'):
+        return jsonify({'success': False, 'message': 'Authentication required. Please log in.'}), 401
+
     data = request.get_json() or {}
     progress_val = data.get('progress')
     employee_name = data.get('employee_name', '').strip()
@@ -685,6 +950,7 @@ def update_task_progress(task_id):
 
     try:
         conn = sqlite3.connect(DB_PATH)
+        conn.execute("PRAGMA foreign_keys = ON;")
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
 
@@ -695,7 +961,12 @@ def update_task_progress(task_id):
             conn.close()
             return jsonify({'success': False, 'message': 'Task not found'}), 404
 
-        if employee_name and task_row['employee_name'].strip().lower() != employee_name.lower():
+        # Verify employee ownership if logged in as employee or employee_name is provided in request context
+        if current_user and current_user.get('role', '').lower() == 'employee':
+            if task_row['employee_name'].strip().lower() != current_user.get('name', '').strip().lower():
+                conn.close()
+                return jsonify({'success': False, 'message': 'Unauthorized: Task belongs to another employee.'}), 403
+        elif employee_name and task_row['employee_name'].strip().lower() != employee_name.lower():
             conn.close()
             return jsonify({'success': False, 'message': 'Unauthorized: Task belongs to another employee.'}), 403
 
@@ -788,8 +1059,20 @@ def get_meetings(employee_name):
     if not employee_name:
         return jsonify({'success': False, 'message': 'Employee name is required'}), 400
 
+    current_user = get_current_user()
+    if not current_user and not app.config.get('TESTING'):
+        return jsonify({'success': False, 'message': 'Authentication required. Please log in.'}), 401
+
+    if current_user and current_user.get('role', '').lower() == 'employee':
+        if current_user.get('name', '').strip().lower() != employee_name.strip().lower():
+            return jsonify({
+                'success': False,
+                'message': 'Unauthorized: You can only view your own meetings.'
+            }), 403
+
     try:
         conn = sqlite3.connect(DB_PATH)
+        conn.execute("PRAGMA foreign_keys = ON;")
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         
@@ -829,6 +1112,16 @@ def get_meetings(employee_name):
 
 @app.route('/assign-meeting', methods=['POST'])
 def assign_meeting():
+    current_user = get_current_user()
+    if not current_user and not app.config.get('TESTING'):
+        return jsonify({'success': False, 'message': 'Authentication required. Please log in.'}), 401
+
+    if current_user and current_user.get('role', '').lower() not in ['project_manager', 'administrator']:
+        return jsonify({
+            'success': False,
+            'message': 'Forbidden: Only Project Managers or Administrators can assign meetings.'
+        }), 403
+
     data = request.get_json() or {}
     employee_name = data.get('employee_name', '').strip()
     title = data.get('title', '').strip()
@@ -847,6 +1140,7 @@ def assign_meeting():
 
     try:
         conn = sqlite3.connect(DB_PATH)
+        conn.execute("PRAGMA foreign_keys = ON;")
         cursor = conn.cursor()
         cursor.execute(
             'INSERT INTO meetings (employee_name, title, description, start_time, end_time, host, participants_count, link) '
@@ -872,11 +1166,16 @@ def assign_meeting():
 @app.route('/tasks/id/<int:task_id>', methods=['GET'])
 def get_task_by_id(task_id):
     """Returns details for a single task."""
+    current_user = get_current_user()
     user_email = request.args.get('user_email', '').strip()
-    user_info = get_user_info(user_email)
+    user_info = current_user or get_user_info(user_email)
+
+    if not user_info and not app.config.get('TESTING'):
+        return jsonify({'success': False, 'message': 'Authentication required. Please log in.'}), 401
 
     try:
         conn = sqlite3.connect(DB_PATH)
+        conn.execute("PRAGMA foreign_keys = ON;")
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         cursor.execute('''
@@ -902,7 +1201,7 @@ def get_task_by_id(task_id):
         }
 
         # Check authorization if user_info is available
-        if user_info and user_info['role'] == 'employee':
+        if user_info and user_info.get('role', '').lower() == 'employee':
             emp_name = task_data['employee_name'].strip().lower()
             u_name = user_info['name'].strip().lower()
             u_email = user_info['email'].strip().lower()
@@ -919,11 +1218,16 @@ def get_task_by_id(task_id):
 @app.route('/tasks/<int:task_id>/comments', methods=['GET'])
 def get_task_comments(task_id):
     """Returns comments for a specific task."""
+    current_user = get_current_user()
     user_email = request.args.get('user_email', '').strip()
-    user_info = get_user_info(user_email)
+    user_info = current_user or get_user_info(user_email)
+
+    if not user_info and not app.config.get('TESTING'):
+        return jsonify({'success': False, 'message': 'Authentication required. Please log in.'}), 401
 
     try:
         conn = sqlite3.connect(DB_PATH)
+        conn.execute("PRAGMA foreign_keys = ON;")
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
 
@@ -974,6 +1278,7 @@ def get_task_comments(task_id):
 @app.route('/tasks/<int:task_id>/comments', methods=['POST'])
 def add_task_comment(task_id):
     """Adds a new comment to a task."""
+    current_user = get_current_user()
     data = request.get_json() or {}
     comment_text = data.get('comment', '').strip()
     user_email = data.get('user_email', '').strip()
@@ -981,16 +1286,19 @@ def add_task_comment(task_id):
     if not comment_text:
         return jsonify({'success': False, 'message': 'Comment text cannot be empty'}), 400
 
-    user_info = get_user_info(user_email)
+    user_info = current_user or get_user_info(user_email)
     if not user_info:
         user_name = data.get('user_name', '').strip()
         user_info = get_user_info(user_name)
 
+    if not user_info and not app.config.get('TESTING'):
+        return jsonify({'success': False, 'message': 'Authentication required. Please log in.'}), 401
     if not user_info:
         return jsonify({'success': False, 'message': 'Unauthorized user context'}), 401
 
     try:
         conn = sqlite3.connect(DB_PATH)
+        conn.execute("PRAGMA foreign_keys = ON;")
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
 
@@ -1001,7 +1309,7 @@ def add_task_comment(task_id):
             return jsonify({'success': False, 'message': 'Task not found'}), 404
 
         # Validate employee permission
-        if user_info['role'] == 'employee':
+        if user_info.get('role', '').lower() == 'employee':
             emp_name = task_row['employee_name'].strip().lower()
             u_name = user_info['name'].strip().lower()
             u_email = user_info['email'].strip().lower()
@@ -1050,6 +1358,7 @@ def add_task_comment(task_id):
 @app.route('/tasks/<int:task_id>/comments/<int:comment_id>', methods=['PATCH'])
 def edit_task_comment(task_id, comment_id):
     """Allows the author to edit their own comment."""
+    current_user = get_current_user()
     data = request.get_json() or {}
     new_comment_text = data.get('comment', '').strip()
     user_email = data.get('user_email', '').strip()
@@ -1057,12 +1366,15 @@ def edit_task_comment(task_id, comment_id):
     if not new_comment_text:
         return jsonify({'success': False, 'message': 'Comment text cannot be empty'}), 400
 
-    user_info = get_user_info(user_email)
+    user_info = current_user or get_user_info(user_email)
+    if not user_info and not app.config.get('TESTING'):
+        return jsonify({'success': False, 'message': 'Authentication required. Please log in.'}), 401
     if not user_info:
         return jsonify({'success': False, 'message': 'Unauthorized user context'}), 401
 
     try:
         conn = sqlite3.connect(DB_PATH)
+        conn.execute("PRAGMA foreign_keys = ON;")
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
 
@@ -1102,15 +1414,19 @@ def edit_task_comment(task_id, comment_id):
 @app.route('/tasks/<int:task_id>/comments/<int:comment_id>', methods=['DELETE'])
 def delete_task_comment(task_id, comment_id):
     """Allows the author to delete their own comment."""
+    current_user = get_current_user()
     data = request.get_json() or {}
     user_email = data.get('user_email', '').strip() or request.args.get('user_email', '').strip()
 
-    user_info = get_user_info(user_email)
+    user_info = current_user or get_user_info(user_email)
+    if not user_info and not app.config.get('TESTING'):
+        return jsonify({'success': False, 'message': 'Authentication required. Please log in.'}), 401
     if not user_info:
         return jsonify({'success': False, 'message': 'Unauthorized user context'}), 401
 
     try:
         conn = sqlite3.connect(DB_PATH)
+        conn.execute("PRAGMA foreign_keys = ON;")
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
 
@@ -1149,11 +1465,16 @@ def delete_task_comment(task_id, comment_id):
 @app.route('/tasks/<int:task_id>/activity', methods=['GET'])
 def get_task_activity(task_id):
     """Returns activity records for a specific task sorted newest first."""
+    current_user = get_current_user()
     user_email = request.args.get('user_email', '').strip()
-    user_info = get_user_info(user_email)
+    user_info = current_user or get_user_info(user_email)
+
+    if not user_info and not app.config.get('TESTING'):
+        return jsonify({'success': False, 'message': 'Authentication required. Please log in.'}), 401
 
     try:
         conn = sqlite3.connect(DB_PATH)
+        conn.execute("PRAGMA foreign_keys = ON;")
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
 
@@ -1163,7 +1484,7 @@ def get_task_activity(task_id):
             conn.close()
             return jsonify({'success': False, 'message': 'Task not found'}), 404
 
-        if user_info and user_info['role'] == 'employee':
+        if user_info and user_info.get('role', '').lower() == 'employee':
             emp_name = task_row['employee_name'].strip().lower()
             u_name = user_info['name'].strip().lower()
             u_email = user_info['email'].strip().lower()
@@ -1203,8 +1524,16 @@ def get_task_activity(task_id):
 @app.route('/activity/recent', methods=['GET'])
 def get_recent_team_activity():
     """Returns top 6 recent activities across all tasks for Manager Dashboard."""
+    current_user = get_current_user()
+    if not current_user and not app.config.get('TESTING'):
+        return jsonify({'success': False, 'message': 'Authentication required. Please log in.'}), 401
+
+    if current_user and current_user.get('role', '').lower() == 'employee':
+        return jsonify({'success': False, 'message': 'Forbidden: Only Project Managers or Administrators can view team activity.'}), 403
+
     try:
         conn = sqlite3.connect(DB_PATH)
+        conn.execute("PRAGMA foreign_keys = ON;")
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
 
@@ -1241,4 +1570,7 @@ def get_recent_team_activity():
 
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5001, debug=True)
+    port = int(os.getenv('PORT', 5001))
+    debug = os.getenv('FLASK_DEBUG', 'False').lower() in ('true', '1', 't')
+    host = os.getenv('HOST', '127.0.0.1')
+    app.run(host=host, port=port, debug=debug)

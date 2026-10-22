@@ -1,2 +1,10 @@
+# Backend specific ignores
 .env
+*.env
+!.env.example
 __pycache__/
+*.py[cod]
+*.db
+*.db.bak
+*.sqlite
+*.sqlite3

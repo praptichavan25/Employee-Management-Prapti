@@ -6,21 +6,24 @@
       "email": "prapti.chavan25@gmail.com",
       "role": "project_manager",
       "department": "Project Management",
-      "status": "active"
+      "status": "active",
+      "password_hash": "scrypt:32768:8:1$R9Q9gCIwtaBnC1L2$079dfde2663442471db4d7f82557c1b6b96f313a04451d3889878e20e5ac2c5179a36cce2fc19e2592593e4be9cc10a920aa4ea0d594a9b777a1ec91a9701b08"
     },
     {
       "name": "Ananya Kulkarni",
       "email": "ananyaspkulkarni@gmail.com",
       "role": "project_manager",
       "department": "Project Management",
-      "status": "active"
+      "status": "active",
+      "password_hash": "scrypt:32768:8:1$R9Q9gCIwtaBnC1L2$079dfde2663442471db4d7f82557c1b6b96f313a04451d3889878e20e5ac2c5179a36cce2fc19e2592593e4be9cc10a920aa4ea0d594a9b777a1ec91a9701b08"
     },
     {
       "name": "Samarth Padole",
       "email": "samarthpadole@gmail.com",
       "role": "project_manager",
       "department": "Project Management",
-      "status": "active"
+      "status": "active",
+      "password_hash": "scrypt:32768:8:1$R9Q9gCIwtaBnC1L2$079dfde2663442471db4d7f82557c1b6b96f313a04451d3889878e20e5ac2c5179a36cce2fc19e2592593e4be9cc10a920aa4ea0d594a9b777a1ec91a9701b08"
     }
   ],
   "employees": [
@@ -29,84 +32,106 @@
       "email": "etteakshit@gmail.com",
       "role": "employee",
       "department": "Engineering",
-      "status": "active"
+      "status": "active",
+      "password_hash": "scrypt:32768:8:1$R9Q9gCIwtaBnC1L2$079dfde2663442471db4d7f82557c1b6b96f313a04451d3889878e20e5ac2c5179a36cce2fc19e2592593e4be9cc10a920aa4ea0d594a9b777a1ec91a9701b08"
     },
     {
       "name": "Pawani Joshi",
       "email": "pawanicjoshi@gmail.com",
       "role": "employee",
       "department": "Design",
-      "status": "active"
+      "status": "active",
+      "password_hash": "scrypt:32768:8:1$R9Q9gCIwtaBnC1L2$079dfde2663442471db4d7f82557c1b6b96f313a04451d3889878e20e5ac2c5179a36cce2fc19e2592593e4be9cc10a920aa4ea0d594a9b777a1ec91a9701b08"
     },
     {
       "name": "Anuj",
       "email": "anujp2407@gmail.com",
       "role": "employee",
       "department": "Data & Analytics",
-      "status": "active"
+      "status": "active",
+      "password_hash": "scrypt:32768:8:1$R9Q9gCIwtaBnC1L2$079dfde2663442471db4d7f82557c1b6b96f313a04451d3889878e20e5ac2c5179a36cce2fc19e2592593e4be9cc10a920aa4ea0d594a9b777a1ec91a9701b08"
     },
     {
       "name": "John Brick",
       "email": "johnbricknew@gmail.com",
       "role": "employee",
       "department": "Engineering",
-      "status": "active"
+      "status": "active",
+      "password_hash": "scrypt:32768:8:1$R9Q9gCIwtaBnC1L2$079dfde2663442471db4d7f82557c1b6b96f313a04451d3889878e20e5ac2c5179a36cce2fc19e2592593e4be9cc10a920aa4ea0d594a9b777a1ec91a9701b08"
     },
     {
       "name": "Arya Pawar",
       "email": "aryapawar663@gmail.com",
       "role": "employee",
       "department": "Engineering",
-      "status": "active"
+      "status": "active",
+      "password_hash": "scrypt:32768:8:1$R9Q9gCIwtaBnC1L2$079dfde2663442471db4d7f82557c1b6b96f313a04451d3889878e20e5ac2c5179a36cce2fc19e2592593e4be9cc10a920aa4ea0d594a9b777a1ec91a9701b08"
     },
     {
       "name": "Sanskar Ghorpade",
       "email": "sanskarghorpade1@gmail.com",
       "role": "employee",
       "department": "Quality Assurance",
-      "status": "active"
+      "status": "active",
+      "password_hash": "scrypt:32768:8:1$R9Q9gCIwtaBnC1L2$079dfde2663442471db4d7f82557c1b6b96f313a04451d3889878e20e5ac2c5179a36cce2fc19e2592593e4be9cc10a920aa4ea0d594a9b777a1ec91a9701b08"
     },
     {
       "name": "Beast Loyal",
       "email": "beastloyal87@gmail.com",
       "role": "employee",
       "department": "Infrastructure",
-      "status": "active"
+      "status": "active",
+      "password_hash": "scrypt:32768:8:1$R9Q9gCIwtaBnC1L2$079dfde2663442471db4d7f82557c1b6b96f313a04451d3889878e20e5ac2c5179a36cce2fc19e2592593e4be9cc10a920aa4ea0d594a9b777a1ec91a9701b08"
     },
     {
       "name": "Sanjana Chavan",
       "email": "sanjanachavan2809@gmail.com",
       "role": "employee",
       "department": "Research & Development",
-      "status": "active"
+      "status": "active",
+      "password_hash": "scrypt:32768:8:1$R9Q9gCIwtaBnC1L2$079dfde2663442471db4d7f82557c1b6b96f313a04451d3889878e20e5ac2c5179a36cce2fc19e2592593e4be9cc10a920aa4ea0d594a9b777a1ec91a9701b08"
     },
     {
       "name": "Yash R More",
       "email": "yashrmore24@gmail.com",
       "role": "employee",
       "department": "Operations",
-      "status": "active"
+      "status": "active",
+      "password_hash": "scrypt:32768:8:1$R9Q9gCIwtaBnC1L2$079dfde2663442471db4d7f82557c1b6b96f313a04451d3889878e20e5ac2c5179a36cce2fc19e2592593e4be9cc10a920aa4ea0d594a9b777a1ec91a9701b08"
     },
     {
       "name": "Tanmay",
       "email": "69tanmaychavan@gmail.com",
       "role": "employee",
       "department": "Ai/Ml",
-      "status": "active"
+      "status": "active",
+      "password_hash": "scrypt:32768:8:1$R9Q9gCIwtaBnC1L2$079dfde2663442471db4d7f82557c1b6b96f313a04451d3889878e20e5ac2c5179a36cce2fc19e2592593e4be9cc10a920aa4ea0d594a9b777a1ec91a9701b08"
     },
     {
       "name": "Anjishnu",
       "email": "anjishnu.ghosh.804979@gmail.com",
       "role": "employee",
       "department": "R&D",
-      "status": "active"
+      "status": "active",
+      "password_hash": "scrypt:32768:8:1$R9Q9gCIwtaBnC1L2$079dfde2663442471db4d7f82557c1b6b96f313a04451d3889878e20e5ac2c5179a36cce2fc19e2592593e4be9cc10a920aa4ea0d594a9b777a1ec91a9701b08"
     },
     {
       "name": "mandar",
       "email": "dnet.mandar@gmail.com",
       "role": "employee",
       "department": "R&D",
-      "status": "active"
+      "status": "active",
+      "password_hash": "scrypt:32768:8:1$R9Q9gCIwtaBnC1L2$079dfde2663442471db4d7f82557c1b6b96f313a04451d3889878e20e5ac2c5179a36cce2fc19e2592593e4be9cc10a920aa4ea0d594a9b777a1ec91a9701b08"
+    }
+  ],
+  "administrators": [
+    {
+      "name": "Admin PHOENIX",
+      "email": "admin@phoenix.local",
+      "role": "administrator",
+      "department": "Administration",
+      "status": "active",
+      "password_hash": "scrypt:32768:8:1$R9Q9gCIwtaBnC1L2$079dfde2663442471db4d7f82557c1b6b96f313a04451d3889878e20e5ac2c5179a36cce2fc19e2592593e4be9cc10a920aa4ea0d594a9b777a1ec91a9701b08"
     }
   ]
 }

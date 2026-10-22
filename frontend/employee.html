@@ -10,7 +10,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap" rel="stylesheet">
     <!-- Google Material Symbols Outlined -->
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
-    <link rel="stylesheet" href="css/styles.css?v=6.0">
+    <link rel="stylesheet" href="css/styles.css?v=7.2">
 </head>
 <body class="phoenix-emp-body">
 
@@ -272,51 +272,7 @@
                     </div>
                 </div>
 
-                <!-- STANDALONE COMMENTS & UPDATES SECTION -->
-                <div class="px-card px-comments-updates-card" id="commentsUpdatesSection">
-                    <div class="px-card-head">
-                        <div>
-                            <h3 class="px-card-title">Comments &amp; Updates</h3>
-                            <p class="px-card-sub">Add an update or comment related to your assigned task.</p>
-                        </div>
-                        <span class="material-symbols-outlined px-cu-head-icon">forum</span>
-                    </div>
 
-                    <div class="px-cu-form">
-                        <!-- Task Selector -->
-                        <div class="px-cu-field">
-                            <label class="px-cu-label" for="cuTaskSelect">Select Task</label>
-                            <select id="cuTaskSelect" class="px-cu-select" onchange="handleCuTaskChange()">
-                                <option value="">-- Select an active task --</option>
-                            </select>
-                        </div>
-
-                        <!-- Comment Textarea -->
-                        <div class="px-cu-field">
-                            <label class="px-cu-label" for="cuCommentInput">Your Comment or Update</label>
-                            <textarea id="cuCommentInput" class="px-cu-textarea" rows="3" placeholder="Write your comment or update..."></textarea>
-                        </div>
-
-                        <!-- Action Button -->
-                        <div class="px-cu-actions">
-                            <button type="button" id="cuAddCommentBtn" class="px-btn-add-comment" onclick="submitStandaloneComment()">
-                                <span class="material-symbols-outlined" style="font-size: 16px;">send</span>
-                                <span>Add Comment</span>
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Recent Comments Area -->
-                    <div class="px-cu-recent-section">
-                        <div class="px-cu-recent-head">
-                            <span class="px-cu-recent-title">Recent Comments</span>
-                            <span id="cuRecentCount" class="px-cu-recent-count">0</span>
-                        </div>
-                        <div id="cuRecentCommentsList" class="px-cu-recent-list">
-                            <div class="px-cu-empty-comments">Select a task above to view its recent comments.</div>
-                        </div>
-                    </div>
-                </div>
             </div>
 
             <!-- RIGHT COLUMN: Upcoming Deadlines & Join Meeting Card -->
@@ -371,6 +327,52 @@
                     </div>
                 </div>
 
+                <!-- STANDALONE COMMENTS & UPDATES SECTION (moved to right column) -->
+                <div class="px-card px-comments-updates-card" id="commentsUpdatesSection">
+                    <div class="px-card-head">
+                        <div>
+                            <h3 class="px-card-title">Comments &amp; Updates</h3>
+                            <p class="px-card-sub">Add an update or comment related to your assigned task.</p>
+                        </div>
+                        <span class="material-symbols-outlined px-cu-head-icon">forum</span>
+                    </div>
+
+                    <div class="px-cu-form">
+                        <!-- Task Selector -->
+                        <div class="px-cu-field">
+                            <label class="px-cu-label" for="cuTaskSelect">Select Task</label>
+                            <select id="cuTaskSelect" class="px-cu-select">
+                                <option value="">-- Select a task --</option>
+                            </select>
+                        </div>
+
+                        <!-- Comment Textarea -->
+                        <div class="px-cu-field">
+                            <label class="px-cu-label" for="cuCommentInput">Your Comment or Update</label>
+                            <textarea id="cuCommentInput" class="px-cu-textarea" rows="3" placeholder="Write your comment or update..."></textarea>
+                        </div>
+
+                        <!-- Action Button -->
+                        <div class="px-cu-actions">
+                            <button type="button" id="cuAddCommentBtn" class="px-btn-add-comment">
+                                <span class="material-symbols-outlined" style="font-size: 16px;">send</span>
+                                <span>Add Comment</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Recent Comments Area -->
+                    <div class="px-cu-recent-section">
+                        <div class="px-cu-recent-head">
+                            <span class="px-cu-recent-title">Recent Comments</span>
+                            <span id="cuRecentCount" class="px-cu-recent-count">0</span>
+                        </div>
+                        <div id="cuRecentCommentsList" class="px-cu-recent-list">
+                            <div class="px-cu-empty-comments">Select a task above to view its recent comments.</div>
+                        </div>
+                    </div>
+                </div>
+
             </div>
 
         </div>
@@ -383,10 +385,21 @@
             </button>
         </footer>
 
+    <!-- Toast notification -->
+    <div id="cuToast" class="px-cu-toast" style="display:none;"></div>
+
     </main>
 
     <script>
-        function logoutEmployee() {
+        async function logoutEmployee() {
+            try {
+                await fetch('http://127.0.0.1:5001/logout', {
+                    method: 'POST',
+                    credentials: 'include'
+                });
+            } catch (e) {
+                // Backend unreachable — proceed with local logout anyway
+            }
             localStorage.removeItem('phoenix_user');
             window.location.href = 'index.html';
         }
@@ -395,7 +408,7 @@
             alert('No meeting link available yet.');
         }
     </script>
-    <script src="js/employee.js?v=6.0"></script>
+    <script src="js/employee.js?v=7.2"></script>
 
 <!-- Task Details Slide-over Drawer -->
 <div id="pxDrawerBackdrop" class="px-drawer-backdrop"></div>

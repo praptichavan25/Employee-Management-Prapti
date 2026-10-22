@@ -225,7 +225,7 @@ async function loadTasks(employeeName) {
     }
 
     try {
-        const response = await fetch(`http://127.0.0.1:5001/tasks/${encodeURIComponent(employeeName)}`);
+        const response = await fetch(`http://127.0.0.1:5001/tasks/${encodeURIComponent(employeeName)}`, { credentials: 'include' });
         const data = await response.json();
 
         if (response.ok && data.success) {
@@ -235,6 +235,9 @@ async function loadTasks(employeeName) {
             renderPastDueTasks(allEmployeeTasks);
             renderUpcomingDeadlines(allEmployeeTasks);
             updateKPICounters(allEmployeeTasks);
+
+            // Populate the standalone Comments & Updates task dropdown with ALL tasks
+            populateCuTaskDropdown(allEmployeeTasks);
 
             // Also load meetings for the employee
             loadMeetings(employeeName);
@@ -262,7 +265,7 @@ let currentMeetingInterval = null;
 
 async function loadMeetings(employeeName) {
     try {
-        const response = await fetch(`http://127.0.0.1:5001/meetings/${encodeURIComponent(employeeName)}`);
+        const response = await fetch(`http://127.0.0.1:5001/meetings/${encodeURIComponent(employeeName)}`, { credentials: 'include' });
         const data = await response.json();
 
         if (response.ok && data.success) {
@@ -741,6 +744,7 @@ async function submitEmployeeComment() {
     try {
         const resp = await fetch(`http://127.0.0.1:5001/tasks/${taskId}/comments`, {
             method: 'POST',
+            credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 comment: commentText,
@@ -856,6 +860,7 @@ async function saveEmployeeProgress() {
     try {
         const resp = await fetch(`http://127.0.0.1:5001/tasks/${taskId}/progress`, {
             method: 'PATCH',
+            credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 progress: selectedProgressValue,
@@ -882,6 +887,7 @@ async function saveEmployeeProgress() {
             renderPastDueTasks(allEmployeeTasks);
             renderUpcomingDeadlines(allEmployeeTasks);
             updateKPICounters(allEmployeeTasks);
+            populateCuTaskDropdown(allEmployeeTasks);
         } else {
             alert(data.message || 'Failed to update task progress.');
         }
@@ -924,7 +930,7 @@ async function loadInlineTaskComments(taskId) {
     const user = getCurrentUser();
 
     try {
-        const resp = await fetch(`http://127.0.0.1:5001/tasks/${taskId}/comments?user_email=${encodeURIComponent(user.email)}`);
+        const resp = await fetch(`http://127.0.0.1:5001/tasks/${taskId}/comments?user_email=${encodeURIComponent(user.email)}`, { credentials: 'include' });
         const data = await resp.json();
 
         if (resp.ok && data.success) {
@@ -984,6 +990,7 @@ async function applyTaskStatusUpdate(taskId, newStatus) {
     try {
         const response = await fetch(`http://127.0.0.1:5001/tasks/${taskId}/status`, {
             method: 'PATCH',
+            credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 status: newStatus,
@@ -1010,6 +1017,7 @@ async function applyTaskStatusUpdate(taskId, newStatus) {
             renderPastDueTasks(allEmployeeTasks);
             renderUpcomingDeadlines(allEmployeeTasks);
             updateKPICounters(allEmployeeTasks);
+            populateCuTaskDropdown(allEmployeeTasks);
         } else {
             alert(data.message || 'Failed to update task status.');
         }
@@ -1115,80 +1123,55 @@ function renderTasks(tasks) {
 
         html += `
             <div class="px-task-workspace-card ${isOverdue ? 'card-overdue' : ''} ${isCompleted ? 'card-completed' : ''}" id="task-card-${taskId}">
-                
-                <!-- 1. Header: Title & Status Badge -->
-                <div class="px-task-ws-header">
-                    <div class="px-task-ws-title-group">
-                        <h4 class="px-task-ws-title ${isCompleted ? 'completed' : ''}">${escapeHtml(task.task)}</h4>
-                        <p class="px-task-ws-assigned">Assigned by <strong>${escapeHtml(assignedBy)}</strong></p>
+                <!-- Top Row: Title & Status Badge -->
+                <div class="px-task-card-top">
+                    <div class="px-task-title-wrap">
+                        <h4 class="px-task-card-title ${isCompleted ? 'completed' : ''}" title="${escapeHtml(task.task)}">${escapeHtml(task.task)}</h4>
+                        <p class="px-task-card-assigned">Assigned by <strong>${escapeHtml(assignedBy)}</strong></p>
                     </div>
-                    <div class="px-task-ws-badges">
-                        <span class="px-task-status-pill ${statusBadgeClass}">${statusLabel}</span>
-                    </div>
+                    <span class="px-task-status-pill ${statusBadgeClass}">${statusLabel}</span>
                 </div>
 
-                <!-- 2. Deadline Row: Exact Date & Time + Past Due / Upcoming Indicator -->
-                <div class="px-task-ws-deadline-row">
-                    ${indicatorHtml}
-                    <span class="px-task-ws-exact-time">${escapeHtml(deadlineFormatted)}</span>
-                    ${relativeDeadline ? `<span class="px-task-ws-relative-text">• ${escapeHtml(relativeDeadline)}</span>` : ''}
-                </div>
-
-                <!-- 3. Progress Section: Visual Progress Bar -->
-                <div class="px-task-prog-section">
-                    <div class="px-task-prog-header">
-                        <span class="px-task-prog-title">Progress</span>
-                        <span class="px-task-prog-pct" id="task-prog-text-${taskId}">${progress}%</span>
+                <!-- Bottom Row: Deadline & Indicator (Left) + Progress & Compact Actions (Right) -->
+                <div class="px-task-card-bottom">
+                    <div class="px-task-due-wrap">
+                        ${indicatorHtml}
+                        <span class="px-task-exact-deadline">${escapeHtml(deadlineFormatted)}</span>
+                        ${relativeDeadline ? `<span class="px-task-ws-relative-text">• ${escapeHtml(relativeDeadline)}</span>` : ''}
                     </div>
-                    <div class="px-task-prog-track">
-                        <div class="px-task-prog-fill ${progress === 100 ? 'fill-complete' : ''}" id="task-prog-fill-${taskId}" style="width: ${progress}%;"></div>
-                    </div>
-                </div>
 
-                <!-- 4. Footer Bar: Comment Count Toggle & Action Buttons -->
-                <div class="px-task-footer-bar">
-                    <button type="button" class="px-task-comment-count-btn" onclick="toggleTaskComments(${taskId})" title="Click to view/hide comments">
-                        <span class="material-symbols-outlined" style="font-size: 16px;">chat_bubble_outline</span>
-                        <span id="task-comment-count-text-${taskId}">${commentCount} ${commentCount === 1 ? 'Comment' : 'Comments'}</span>
-                        <span class="material-symbols-outlined" id="comment-caret-${taskId}" style="font-size: 16px; transition: transform 0.2s ease;">expand_more</span>
-                    </button>
+                    <div class="px-task-meta-right">
+                        <!-- Progress bar & pct -->
+                        <div class="px-task-mini-prog" title="Progress: ${progress}%">
+                            <div class="px-task-mini-prog-label">
+                                <span>Progress</span>
+                                <strong id="task-prog-text-${taskId}">${progress}%</strong>
+                            </div>
+                            <div class="px-task-mini-prog-track">
+                                <div class="px-task-mini-prog-fill ${progress === 100 ? 'fill-complete' : ''}" id="task-prog-fill-${taskId}" style="width: ${progress}%;"></div>
+                            </div>
+                        </div>
 
-                    <div class="px-task-actions-row">
-                        <button type="button" class="px-btn-task-action" onclick="openUpdateProgressModal(${taskId})" title="Update task progress">
-                            <span class="material-symbols-outlined" style="font-size: 14px;">trending_up</span>
-                            Update Progress
-                        </button>
-                        <button type="button" class="px-btn-task-action" onclick="openAddCommentModal(${taskId})" title="Add a comment to this task">
-                            <span class="material-symbols-outlined" style="font-size: 14px;">add_comment</span>
-                            Add Comment
-                        </button>
-                        ${isCompleted ? `
-                            <button type="button" class="px-btn-task-complete is-done" title="Task is completed">
-                                <span class="material-symbols-outlined" style="font-size: 14px;">check_circle</span>
-                                Completed
+                        <!-- Compact Actions (Update Progress & Mark Complete) -->
+                        <div class="px-task-mini-actions">
+                            <button type="button" class="px-btn-mini-action" onclick="openUpdateProgressModal(${taskId})" title="Update task progress">
+                                <span class="material-symbols-outlined" style="font-size: 13px;">trending_up</span>
+                                <span>Update Progress</span>
                             </button>
-                        ` : `
-                            <button type="button" class="px-btn-task-complete" onclick="promptCompleteTask(${taskId})" title="Mark task as complete">
-                                <span class="material-symbols-outlined" style="font-size: 14px;">check_circle</span>
-                                Mark Complete
-                            </button>
-                        `}
+                            ${isCompleted ? `
+                                <span class="px-badge-mini-done" title="Task Completed">
+                                    <span class="material-symbols-outlined" style="font-size: 13px;">check_circle</span>
+                                    <span>Completed</span>
+                                </span>
+                            ` : `
+                                <button type="button" class="px-btn-mini-complete" onclick="promptCompleteTask(${taskId})" title="Mark task as complete">
+                                    <span class="material-symbols-outlined" style="font-size: 13px;">check_circle</span>
+                                    <span>Mark Complete</span>
+                                </button>
+                            `}
+                        </div>
                     </div>
                 </div>
-
-                <!-- 5. Expandable Inline Comments Area -->
-                <div id="task-comments-${taskId}" class="px-task-comments-collapsible">
-                    <div class="px-task-comments-head">
-                        <span>Comments</span>
-                        <button type="button" class="px-task-comment-count-btn" style="padding:2px 6px; font-size:11px;" onclick="openAddCommentModal(${taskId})">
-                            + Add Comment
-                        </button>
-                    </div>
-                    <div id="task-comments-list-${taskId}" class="px-task-comments-list">
-                        <!-- Loaded dynamically via loadInlineTaskComments -->
-                    </div>
-                </div>
-
             </div>
         `;
     });
@@ -1455,6 +1438,243 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
+// ============================================================
+// STANDALONE COMMENTS & UPDATES SECTION LOGIC
+// ============================================================
+
+let cuToastTimer = null;
+
+/**
+ * Show a toast notification at the bottom of the page.
+ * @param {string} message - The message to display.
+ * @param {'success'|'error'|'warning'} type - The type of toast.
+ * @param {number} duration - How long to show in ms (default 3500).
+ */
+function showCuToast(message, type, duration) {
+    duration = duration || 3500;
+    const toast = document.getElementById('cuToast');
+    if (!toast) return;
+    if (cuToastTimer) clearTimeout(cuToastTimer);
+
+    toast.textContent = message;
+    toast.className = 'px-cu-toast toast-' + type;
+    toast.style.display = 'block';
+
+    // Force reflow before adding show class for transition
+    void toast.offsetWidth;
+    toast.classList.add('show');
+
+    cuToastTimer = setTimeout(function () {
+        toast.classList.remove('show');
+        setTimeout(function () {
+            toast.style.display = 'none';
+        }, 350);
+    }, duration);
+}
+
+/**
+ * Populate the Comments & Updates task dropdown with ALL tasks (not filtered by status).
+ * @param {Array} tasks - Array of task objects from allEmployeeTasks.
+ */
+function populateCuTaskDropdown(tasks) {
+    const select = document.getElementById('cuTaskSelect');
+    if (!select) return;
+
+    // Preserve current selection if any
+    const currentVal = select.value;
+
+    // Clear all options except the placeholder
+    select.innerHTML = '<option value="">-- Select a task --</option>';
+
+    if (!tasks || tasks.length === 0) return;
+
+    tasks.forEach(function (task) {
+        const option = document.createElement('option');
+        option.value = task.id;
+        // Truncate long task names for the dropdown display
+        const taskName = task.task.length > 60 ? task.task.substring(0, 57) + '...' : task.task;
+        option.textContent = taskName;
+        select.appendChild(option);
+    });
+
+    // Restore previous selection if it still exists
+    if (currentVal) {
+        const optionExists = Array.from(select.options).some(function (opt) {
+            return opt.value === currentVal;
+        });
+        if (optionExists) {
+            select.value = currentVal;
+        }
+    }
+}
+
+/**
+ * Handle task selection change in the Comments & Updates dropdown.
+ * Loads recent comments for the selected task.
+ */
+function handleCuTaskChange() {
+    const select = document.getElementById('cuTaskSelect');
+    const taskId = select ? select.value : '';
+
+    if (taskId) {
+        loadCuRecentComments(parseInt(taskId, 10));
+    } else {
+        // No task selected — show placeholder
+        const listEl = document.getElementById('cuRecentCommentsList');
+        const countEl = document.getElementById('cuRecentCount');
+        if (listEl) {
+            listEl.innerHTML = '<div class="px-cu-empty-comments">Select a task above to view its recent comments.</div>';
+        }
+        if (countEl) countEl.textContent = '0';
+    }
+}
+
+/**
+ * Fetch and render recent comments for a specific task in the Comments & Updates section.
+ * @param {number} taskId - The task ID to fetch comments for.
+ */
+async function loadCuRecentComments(taskId) {
+    const listEl = document.getElementById('cuRecentCommentsList');
+    const countEl = document.getElementById('cuRecentCount');
+    if (!listEl) return;
+
+    listEl.innerHTML = '<div style="text-align:center; padding:12px; color:#94A3B8; font-size:12px;">Loading comments...</div>';
+
+    const user = getCurrentUser();
+
+    try {
+        const resp = await fetch(
+            'http://127.0.0.1:5001/tasks/' + taskId + '/comments?user_email=' + encodeURIComponent(user.email),
+            { credentials: 'include' }
+        );
+        const data = await resp.json();
+
+        if (resp.ok && data.success) {
+            const comments = data.comments || [];
+
+            if (countEl) countEl.textContent = comments.length;
+
+            // Also update in-memory comment_count
+            const task = allEmployeeTasks.find(function (t) { return t.id === taskId; });
+            if (task) task.comment_count = comments.length;
+
+            if (comments.length === 0) {
+                listEl.innerHTML = '<div class="px-cu-empty-comments">No comments yet for this task.</div>';
+                return;
+            }
+
+            // Show most recent comments first (reverse chronological)
+            var reversed = comments.slice().reverse();
+
+            listEl.innerHTML = reversed.map(function (c) {
+                var roleLbl = c.user_role === 'manager' ? 'Project Manager' : 'Employee';
+                var timeStr = formatTimestamp(c.created_at);
+                return (
+                    '<div class="px-cu-comment-card">' +
+                        '<div class="px-cu-comment-top">' +
+                            '<span class="px-cu-author-role">' + escapeHtml(c.user_name) + ' <span class="px-cu-role-sub">· ' + roleLbl + '</span></span>' +
+                            '<span class="px-cu-time">' + escapeHtml(timeStr) + '</span>' +
+                        '</div>' +
+                        '<div class="px-cu-comment-text">' + escapeHtml(c.comment) + '</div>' +
+                    '</div>'
+                );
+            }).join('');
+        } else {
+            listEl.innerHTML = '<div class="px-cu-empty-comments">Unable to load comments.</div>';
+            if (countEl) countEl.textContent = '0';
+        }
+    } catch (err) {
+        console.error('Error loading standalone comments:', err);
+        listEl.innerHTML = '<div class="px-cu-empty-comments">Unable to reach server.</div>';
+        if (countEl) countEl.textContent = '0';
+    }
+}
+
+/**
+ * Submit a comment from the standalone Comments & Updates section.
+ * Validates inputs, POSTs to backend, and refreshes the recent comments list.
+ */
+async function submitStandaloneComment() {
+    var select = document.getElementById('cuTaskSelect');
+    var textarea = document.getElementById('cuCommentInput');
+    var submitBtn = document.getElementById('cuAddCommentBtn');
+    var taskId = select ? select.value : '';
+    var commentText = textarea ? textarea.value.trim() : '';
+
+    // Validation
+    if (!taskId) {
+        showCuToast('Please select a task before adding a comment.', 'warning');
+        if (select) select.focus();
+        return;
+    }
+
+    if (!commentText) {
+        showCuToast('Please enter a comment before sending.', 'warning');
+        if (textarea) textarea.focus();
+        return;
+    }
+
+    var user = getCurrentUser();
+
+    // Disable button while submitting
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span class="material-symbols-outlined" style="font-size:16px;">hourglass_top</span> <span>Sending...</span>';
+    }
+
+    try {
+        var resp = await fetch('http://127.0.0.1:5001/tasks/' + parseInt(taskId, 10) + '/comments', {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                comment: commentText,
+                user_email: user.email,
+                user_name: user.name
+            })
+        });
+
+        var data = await resp.json();
+
+        if (resp.ok && data.success) {
+            showCuToast('✓ Comment added successfully.', 'success');
+
+            // Clear textarea but keep the task selected
+            if (textarea) textarea.value = '';
+
+            // Update in-memory comment count
+            var task = allEmployeeTasks.find(function (t) { return t.id === parseInt(taskId, 10); });
+            if (task) task.comment_count = (task.comment_count || 0) + 1;
+
+            // Update inline comment count button if visible
+            var countBtnText = document.getElementById('task-comment-count-text-' + taskId);
+            if (countBtnText && task) {
+                countBtnText.textContent = task.comment_count + ' ' + (task.comment_count === 1 ? 'Comment' : 'Comments');
+            }
+
+            // Refresh the Recent Comments section
+            loadCuRecentComments(parseInt(taskId, 10));
+
+            // Also refresh inline comments if they're open
+            var coll = document.getElementById('task-comments-' + taskId);
+            if (coll && coll.style.display !== 'none') {
+                loadInlineTaskComments(parseInt(taskId, 10));
+            }
+        } else {
+            showCuToast(data.message || 'Unable to add comment. Please try again.', 'error');
+        }
+    } catch (err) {
+        console.error('Error submitting standalone comment:', err);
+        showCuToast('Unable to add comment. Please try again.', 'error');
+    } finally {
+        // Re-enable button
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<span class="material-symbols-outlined" style="font-size:16px;">send</span> <span>Add Comment</span>';
+        }
+    }
+}
+
 // Initial load on page ready
 document.addEventListener('DOMContentLoaded', function () {
     initWorkspaceDate();
@@ -1471,6 +1691,17 @@ document.addEventListener('DOMContentLoaded', function () {
         console.error('Error reading logged in user:', e);
     }
     loadTasks(employeeName);
+
+    // Wire up standalone Comments & Updates section event listeners
+    const cuTaskSelect = document.getElementById('cuTaskSelect');
+    const cuAddCommentBtn = document.getElementById('cuAddCommentBtn');
+
+    if (cuTaskSelect) {
+        cuTaskSelect.addEventListener('change', handleCuTaskChange);
+    }
+    if (cuAddCommentBtn) {
+        cuAddCommentBtn.addEventListener('click', submitStandaloneComment);
+    }
 });
 
 
@@ -1520,7 +1751,7 @@ async function openTaskDetails(taskId) {
     const user = getCurrentUser();
 
     try {
-        const resp = await fetch(`http://127.0.0.1:5001/tasks/id/${taskId}?user_email=${encodeURIComponent(user.email)}`);
+        const resp = await fetch(`http://127.0.0.1:5001/tasks/id/${taskId}?user_email=${encodeURIComponent(user.email)}`, { credentials: 'include' });
         const data = await resp.json();
 
         if (resp.ok && data.success && data.task) {
@@ -1593,7 +1824,7 @@ async function loadTaskComments(taskId) {
     const user = getCurrentUser();
 
     try {
-        const resp = await fetch(`http://127.0.0.1:5001/tasks/${taskId}/comments?user_email=${encodeURIComponent(user.email)}`);
+        const resp = await fetch(`http://127.0.0.1:5001/tasks/${taskId}/comments?user_email=${encodeURIComponent(user.email)}`, { credentials: 'include' });
         const data = await resp.json();
 
         if (resp.ok && data.success) {
@@ -1660,7 +1891,7 @@ async function loadTaskActivity(taskId) {
     const user = getCurrentUser();
 
     try {
-        const resp = await fetch(`http://127.0.0.1:5001/tasks/${taskId}/activity?user_email=${encodeURIComponent(user.email)}`);
+        const resp = await fetch(`http://127.0.0.1:5001/tasks/${taskId}/activity?user_email=${encodeURIComponent(user.email)}`, { credentials: 'include' });
         const data = await resp.json();
 
         if (resp.ok && data.success) {
@@ -1707,6 +1938,7 @@ async function submitComment() {
     try {
         const resp = await fetch(`http://127.0.0.1:5001/tasks/${currentDrawerTaskId}/comments`, {
             method: 'POST',
+            credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 comment: text,
@@ -1777,6 +2009,7 @@ async function saveEditComment(commentId) {
     try {
         const resp = await fetch(`http://127.0.0.1:5001/tasks/${currentDrawerTaskId}/comments/${commentId}`, {
             method: 'PATCH',
+            credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 comment: newText,
@@ -1819,6 +2052,7 @@ async function confirmDeleteComment() {
     try {
         const resp = await fetch(`http://127.0.0.1:5001/tasks/${currentDrawerTaskId}/comments/${commentId}`, {
             method: 'DELETE',
+            credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ user_email: user.email })
         });

@@ -1,6 +1,32 @@
+# Environment Variables
 .env
 backend/.env
+*.env
+.env.*
+!.env.example
+!backend/.env.example
+
+# Python Virtual Environments
+venv/
+.venv/
+env/
+ENV/
+
+# Python Cache & Bytecode
 __pycache__/
 backend/__pycache__/
-*.pyc
+*.py[cod]
+*$py.class
+
+# Databases and Backups
+*.db
+*.db.bak
+*.sqlite
+*.sqlite3
+backend/phoenix.db
+backend/phoenix.db.bak
+
+# Operating System & IDE
 .DS_Store
+.vscode/
+.idea/

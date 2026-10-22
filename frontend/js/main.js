@@ -2,6 +2,7 @@ document.getElementById('loginForm').addEventListener('submit', async function(e
     e.preventDefault();
 
     const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
     const errorMessage = document.getElementById('errorMessage');
     const submitBtn = document.querySelector('.btn-sign-in') || document.querySelector('.btn');
 
@@ -11,6 +12,12 @@ document.getElementById('loginForm').addEventListener('submit', async function(e
 
     if (!email) {
         errorMessage.textContent = 'Please enter your work email.';
+        errorMessage.classList.add('show');
+        return;
+    }
+
+    if (!password) {
+        errorMessage.textContent = 'Please enter your password.';
         errorMessage.classList.add('show');
         return;
     }
@@ -26,7 +33,8 @@ document.getElementById('loginForm').addEventListener('submit', async function(e
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ email: email })
+            credentials: 'include',
+            body: JSON.stringify({ email: email, password: password })
         });
 
         const data = await response.json();
