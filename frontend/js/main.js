@@ -1,3 +1,13 @@
+// Centralized API URL resolution (falls back to PHOENIX_CONFIG)
+function getApiUrl(endpoint) {
+    if (window.PHOENIX_CONFIG && typeof window.PHOENIX_CONFIG.apiUrl === 'function') {
+        return window.PHOENIX_CONFIG.apiUrl(endpoint);
+    }
+    const clean = endpoint.startsWith('/') ? endpoint : '/' + endpoint;
+    const base = (window.API_BASE_URL || (window.location && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') ? 'http://127.0.0.1:5001' : window.location.origin));
+    return base + clean;
+}
+
 document.getElementById('loginForm').addEventListener('submit', async function(e) {
     e.preventDefault();
 
@@ -28,7 +38,7 @@ document.getElementById('loginForm').addEventListener('submit', async function(e
     }
 
     try {
-        const response = await fetch('http://127.0.0.1:5001/login', {
+        const response = await fetch(getApiUrl('/login'), {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'

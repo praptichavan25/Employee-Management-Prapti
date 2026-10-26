@@ -1,0 +1,51 @@
+name: PHOENIX CI
+
+'on':
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    name: Test & Syntax Validation
+    runs-on: ubuntu-latest
+
+    env:
+      ENVIRONMENT: testing
+      SECRET_KEY: phoenix-ci-testing-secret-key-32-chars-min
+      ALLOWED_ORIGINS: http://127.0.0.1:8090,http://localhost:8090
+      RATELIMIT_STORAGE_URI: memory://
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: 'backend/requirements.txt'
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt pytest
+
+      - name: Python syntax validation
+        run: |
+          python -m py_compile run_tests.py backend/app.py backend/ai_email_service.py backend/email_service.py backend/gunicorn.conf.py backend/set_passwords.py tests/*.py
+
+      - name: JavaScript syntax validation
+        run: |
+          node --check frontend/js/config.js frontend/js/main.js frontend/js/manager.js frontend/js/employee.js
+
+      - name: Run automated test suite
+        run: |
+          pytest -v

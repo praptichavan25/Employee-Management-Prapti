@@ -5,6 +5,16 @@ const cancelAddEmployeeBtn = document.getElementById('cancelAddEmployeeBtn');
 const addEmployeeForm = document.getElementById('addEmployeeForm');
 const addEmpFeedback = document.getElementById('addEmpFeedback');
 
+// Centralized API URL resolution (falls back to PHOENIX_CONFIG)
+function getApiUrl(endpoint) {
+    if (window.PHOENIX_CONFIG && typeof window.PHOENIX_CONFIG.apiUrl === 'function') {
+        return window.PHOENIX_CONFIG.apiUrl(endpoint);
+    }
+    const clean = endpoint.startsWith('/') ? endpoint : '/' + endpoint;
+    const base = (window.API_BASE_URL || (window.location && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') ? 'http://127.0.0.1:5001' : window.location.origin));
+    return base + clean;
+}
+
 let allEmployees = [];
 let allTasks = [];
 
@@ -33,60 +43,128 @@ function isTaskOverdue(task) {
     return now.getTime() > deadlineDate.getTime();
 }
 
-// Load employees dynamically from backend
+// ─── KPI Loading State Helpers ────────────────────────────────────────────
+// Called before any data fetch so users see activity instead of stale dashes.
+const KPI_IDS = ['kpiTotalTasks', 'kpiActiveTasks', 'kpiUpcomingDeadlines', 'kpiPastDueTasks', 'kpiCompletedTasks'];
+
+function setKpiLoading() {
+    KPI_IDS.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = '…';
+    });
+}
+
+function setKpiError() {
+    KPI_IDS.forEach(id => {
+        const el = document.getElementById(id);
+        // Only overwrite if still showing loading; preserve real values on partial success.
+        if (el && el.textContent === '…') el.textContent = '—';
+    });
+}
+
+// ─── Employee Dropdown (UI-only) ───────────────────────────────────────────
+// Loads the employee list and populates the assignment dropdown.
+// Returns the employee array on success, null on auth failure, [] on other errors.
+// DECOUPLED: This function no longer calls loadAllTasks() — that is orchestrated
+// by initDashboard() so KPIs load even when the employee list request fails.
 async function fetchEmployees(selectedName = '') {
     try {
-        const response = await fetch('http://127.0.0.1:5001/employees', { credentials: 'include' });
+        const response = await fetch(getApiUrl('/employees'), { credentials: 'include' });
+
+        if (response.status === 401) {
+            employeeSelect.innerHTML = '<option value="">Session expired. Redirecting to login...</option>';
+            try { localStorage.removeItem('phoenix_user'); } catch (e) {}
+            window.location.replace('index.html');
+            return null; // Signal auth failure to caller
+        }
+
+        if (response.status === 403) {
+            employeeSelect.innerHTML = '<option value="">Access forbidden: Project Manager role required</option>';
+            return [];
+        }
+
         const data = await response.json();
 
         if (response.ok && data.success) {
-            allEmployees = data.employees || [];
+            const employees = data.employees || [];
+            allEmployees = employees;
             employeeSelect.innerHTML = '<option value="">Search or select employee...</option>';
-
-            allEmployees.forEach(emp => {
+            employees.forEach(emp => {
                 const opt = document.createElement('option');
                 opt.value = emp.name;
                 opt.textContent = emp.name;
-                if (selectedName && emp.name === selectedName) {
-                    opt.selected = true;
-                }
+                if (selectedName && emp.name === selectedName) opt.selected = true;
                 employeeSelect.appendChild(opt);
             });
-
-            // After loading employees, load tasks to hydrate dashboard
-            await loadAllTasks();
+            return employees;
         } else {
-            employeeSelect.innerHTML = '<option value="">Error loading employees</option>';
+            const errMsg = (data && data.message) ? data.message : 'Server error loading employees';
+            employeeSelect.innerHTML = `<option value="">${escapeHtml(errMsg)}</option>`;
+            // Add a retry link so the user can reload without a full page refresh
+            const retryHtml = '<button type="button" id="retryEmployeesBtn" style="margin:6px auto;display:block;padding:4px 12px;font-size:12px;cursor:pointer;border:1px solid #94a3b8;border-radius:4px;background:#f1f5f9;color:#334155;">↺ Retry</button>';
+            employeeSelect.insertAdjacentHTML('afterend', retryHtml);
+            const retryBtn = document.getElementById('retryEmployeesBtn');
+            if (retryBtn) retryBtn.addEventListener('click', () => { retryBtn.remove(); initDashboard(); });
+            return [];
         }
     } catch (e) {
-        employeeSelect.innerHTML = '<option value="">Unable to connect to server</option>';
+        employeeSelect.innerHTML = '<option value="">Unable to connect to PHOENIX server</option>';
+        const retryHtml = '<button type="button" id="retryEmployeesBtn" style="margin:6px auto;display:block;padding:4px 12px;font-size:12px;cursor:pointer;border:1px solid #94a3b8;border-radius:4px;background:#f1f5f9;color:#334155;">↺ Retry</button>';
+        employeeSelect.insertAdjacentHTML('afterend', retryHtml);
+        const retryBtn = document.getElementById('retryEmployeesBtn');
+        if (retryBtn) retryBtn.addEventListener('click', () => { retryBtn.remove(); initDashboard(); });
+        return [];
     }
 }
 
-// Load all tasks for all employees
+// ─── Task Aggregation ─────────────────────────────────────────────────────
+// Fetches tasks for each employee in allEmployees using Promise.allSettled so
+// a failed fetch for one employee does not prevent others from loading.
+// Always calls hydrateDashboard() at the end — even on partial failure.
 async function loadAllTasks() {
     allTasks = [];
-    
-    // Call GET /tasks/<employee> for each employee to aggregate
-    const fetchPromises = allEmployees.map(async (emp) => {
-        try {
-            const response = await fetch(`http://127.0.0.1:5001/tasks/${encodeURIComponent(emp.name)}`, { credentials: 'include' });
-            const data = await response.json();
-            if (response.ok && data.success) {
-                return data.tasks || [];
-            }
-        } catch (e) {
-            console.error(`Failed to fetch tasks for ${emp.name}`, e);
-        }
-        return [];
-    });
 
-    const results = await Promise.all(fetchPromises);
-    results.forEach(tasksList => {
-        allTasks.push(...tasksList);
+    if (allEmployees.length === 0) {
+        // No employees known — still hydrate so KPIs show 0 instead of loading dash.
+        hydrateDashboard();
+        return;
+    }
+
+    const fetchPromises = allEmployees.map(emp =>
+        fetch(getApiUrl(`/tasks/${encodeURIComponent(emp.name)}`), { credentials: 'include' })
+            .then(r => r.json().then(data => (r.ok && data.success) ? (data.tasks || []) : []))
+            .catch(e => { console.warn(`Task fetch failed for ${emp.name}:`, e); return []; })
+    );
+
+    const results = await Promise.allSettled(fetchPromises);
+    results.forEach(r => {
+        if (r.status === 'fulfilled') allTasks.push(...r.value);
     });
 
     hydrateDashboard();
+}
+
+// ─── Decoupled Dashboard Initializer ─────────────────────────────────────
+// Runs employee-list fetch and task-data fetch CONCURRENTLY.
+// A failure in the employee list (403, 5xx, network error) will NOT prevent
+// KPI cards from hydrating — tasks load using whatever employees were resolved.
+async function initDashboard(selectedName = '') {
+    // Show loading indicator on KPI cards immediately
+    setKpiLoading();
+
+    // Step 1: Fetch employees (populates dropdown + allEmployees).
+    // If auth failure (null), bail out entirely — redirect already triggered.
+    const employees = await fetchEmployees(selectedName);
+    if (employees === null) return;
+
+    // Step 2: Fetch tasks for all resolved employees, then hydrate.
+    // Even if employees === [], loadAllTasks() will call hydrateDashboard() → shows 0s.
+    try {
+        await loadAllTasks();
+    } catch (e) {
+        console.error('loadAllTasks error:', e);
+        setKpiError();
+    }
 }
 
 // Hydrate KPIs, lists, and charts
@@ -490,9 +568,13 @@ async function sendReminder(empName, taskDesc) {
     alert(`Reminder notification request triggered for ${empName} regarding: "${taskDesc}".`);
 }
 
-// Initial load of employees
-document.addEventListener('DOMContentLoaded', function () {
-    fetchEmployees();
+// Initial dashboard load with authentication guard
+document.addEventListener('DOMContentLoaded', async function () {
+    if (window.PHOENIX_CONFIG && typeof window.PHOENIX_CONFIG.checkAuth === 'function') {
+        const authUser = await window.PHOENIX_CONFIG.checkAuth(['project_manager', 'administrator']);
+        if (!authUser) return; // Unauthenticated or unauthorized; redirected
+    }
+    initDashboard();
 });
 
 // Modal open/close handlers
@@ -530,7 +612,7 @@ if (addEmployeeForm) {
         }
 
         try {
-            const response = await fetch('http://127.0.0.1:5001/add-employee', {
+            const response = await fetch(getApiUrl('/add-employee'), {
                 method: 'POST',
                 credentials: 'include',
                 headers: {
@@ -549,8 +631,8 @@ if (addEmployeeForm) {
                 addEmpFeedback.textContent = 'Employee added successfully.';
                 addEmpFeedback.className = 'px-modal-feedback show success';
 
-                // Refresh dropdown immediately and select the new employee
-                await fetchEmployees(name);
+                // Refresh dropdown and KPIs, then select the new employee
+                await initDashboard(name);
 
                 setTimeout(function () {
                     addEmployeeModal.classList.add('hidden');
@@ -627,7 +709,7 @@ async function generateAIEmail() {
     if (aiErrorBanner) aiErrorBanner.style.display = 'none';
 
     try {
-        const response = await fetch('http://127.0.0.1:5001/generate-ai-email', {
+        const response = await fetch(getApiUrl('/generate-ai-email'), {
             method: 'POST',
             credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
@@ -786,7 +868,7 @@ document.getElementById('taskForm').addEventListener('submit', async function (e
         if (customSubject) payload.custom_subject = customSubject;
         if (customBody) payload.custom_body = customBody;
 
-        const response = await fetch('http://127.0.0.1:5001/assign-task', {
+        const response = await fetch(getApiUrl('/assign-task'), {
             method: 'POST',
             credentials: 'include',
             headers: {
@@ -1091,7 +1173,7 @@ async function openTaskDetails(taskId) {
     const user = getCurrentUser();
 
     try {
-        const resp = await fetch(`http://127.0.0.1:5001/tasks/id/${taskId}?user_email=${encodeURIComponent(user.email)}`, { credentials: 'include' });
+        const resp = await fetch(getApiUrl(`/tasks/id/${taskId}?user_email=${encodeURIComponent(user.email)}`), { credentials: 'include' });
         const data = await resp.json();
 
         if (resp.ok && data.success && data.task) {
@@ -1188,7 +1270,7 @@ async function loadTaskComments(taskId) {
     const user = getCurrentUser();
 
     try {
-        const resp = await fetch(`http://127.0.0.1:5001/tasks/${taskId}/comments?user_email=${encodeURIComponent(user.email)}`, { credentials: 'include' });
+        const resp = await fetch(getApiUrl(`/tasks/${taskId}/comments?user_email=${encodeURIComponent(user.email)}`), { credentials: 'include' });
         const data = await resp.json();
 
         if (resp.ok && data.success) {
@@ -1255,7 +1337,7 @@ async function loadTaskActivity(taskId) {
     const user = getCurrentUser();
 
     try {
-        const resp = await fetch(`http://127.0.0.1:5001/tasks/${taskId}/activity?user_email=${encodeURIComponent(user.email)}`, { credentials: 'include' });
+        const resp = await fetch(getApiUrl(`/tasks/${taskId}/activity?user_email=${encodeURIComponent(user.email)}`), { credentials: 'include' });
         const data = await resp.json();
 
         if (resp.ok && data.success) {
@@ -1300,7 +1382,7 @@ async function submitComment() {
     }
 
     try {
-        const resp = await fetch(`http://127.0.0.1:5001/tasks/${currentModalTaskId}/comments`, {
+        const resp = await fetch(getApiUrl(`/tasks/${currentModalTaskId}/comments`), {
             method: 'POST',
             credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
@@ -1374,7 +1456,7 @@ async function saveEditComment(commentId) {
 
     const user = getCurrentUser();
     try {
-        const resp = await fetch(`http://127.0.0.1:5001/tasks/${currentModalTaskId}/comments/${commentId}`, {
+        const resp = await fetch(getApiUrl(`/tasks/${currentModalTaskId}/comments/${commentId}`), {
             method: 'PATCH',
             credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
@@ -1418,7 +1500,7 @@ async function confirmDeleteComment() {
     const user = getCurrentUser();
 
     try {
-        const resp = await fetch(`http://127.0.0.1:5001/tasks/${currentModalTaskId}/comments/${commentId}`, {
+        const resp = await fetch(getApiUrl(`/tasks/${currentModalTaskId}/comments/${commentId}`), {
             method: 'DELETE',
             credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
@@ -1447,7 +1529,7 @@ async function loadRecentTeamActivity() {
     if (!container) return;
 
     try {
-        const resp = await fetch('http://127.0.0.1:5001/activity/recent', { credentials: 'include' });
+        const resp = await fetch(getApiUrl('/activity/recent'), { credentials: 'include' });
         const data = await resp.json();
 
         if (resp.ok && data.success) {

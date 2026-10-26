@@ -199,6 +199,65 @@ class TestAuthenticationAndRoles(BaseTestCase):
                 self.assertEqual(resp.status_code, 200)
                 self.assertEqual(resp.get_json()['user']['role'], expected_role)
 
+    # ------------------------------------------------------------------
+    # GET /auth/me session validation
+    # ------------------------------------------------------------------
+
+    def test_auth_me_authenticated_project_manager(self):
+        """GET /auth/me returns 200 with sanitized user profile when session is active."""
+        self.client.post('/login', json={
+            'email': 'manager@phoenix.test',
+            'password': 'manager_pass_123'
+        })
+        resp = self.client.get('/auth/me')
+        self.assertEqual(resp.status_code, 200)
+        data = resp.get_json()
+        self.assertTrue(data.get('success'))
+        self.assertTrue(data.get('authenticated'))
+        user = data.get('user', {})
+        self.assertEqual(user.get('role'), 'project_manager')
+        self.assertEqual(user.get('name'), 'Test Manager')
+        self.assertNotIn('password_hash', user)
+        self.assertNotIn('password', user)
+
+    def test_auth_me_authenticated_employee(self):
+        """GET /auth/me returns 200 with role 'employee' for logged in employee."""
+        self.client.post('/login', json={
+            'email': 'alice@gmail.com',
+            'password': 'alice_pass_123'
+        })
+        resp = self.client.get('/auth/me')
+        self.assertEqual(resp.status_code, 200)
+        data = resp.get_json()
+        self.assertTrue(data.get('authenticated'))
+        self.assertEqual(data.get('user', {}).get('role'), 'employee')
+
+    def test_auth_me_unauthenticated(self):
+        """GET /auth/me returns HTTP 401 when no session cookie is present."""
+        resp = self.client.get('/auth/me')
+        self.assertEqual(resp.status_code, 401)
+        data = resp.get_json()
+        self.assertFalse(data.get('authenticated'))
+        self.assertIn('Authentication required', data.get('message', ''))
+
+    def test_auth_me_after_logout(self):
+        """GET /auth/me returns HTTP 401 immediately after POST /logout."""
+        self.client.post('/login', json={
+            'email': 'manager@phoenix.test',
+            'password': 'manager_pass_123'
+        })
+        # Verify authenticated
+        resp1 = self.client.get('/auth/me')
+        self.assertEqual(resp1.status_code, 200)
+
+        # Logout
+        self.client.post('/logout')
+
+        # Verify no longer authenticated
+        resp2 = self.client.get('/auth/me')
+        self.assertEqual(resp2.status_code, 401)
+        self.assertFalse(resp2.get_json().get('authenticated'))
+
 
 if __name__ == '__main__':
     unittest.main()

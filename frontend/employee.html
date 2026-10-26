@@ -390,10 +390,14 @@
 
     </main>
 
+    <script src="js/config.js"></script>
     <script>
         async function logoutEmployee() {
             try {
-                await fetch('http://127.0.0.1:5001/logout', {
+                const logoutUrl = (window.PHOENIX_CONFIG && typeof window.PHOENIX_CONFIG.apiUrl === 'function')
+                    ? window.PHOENIX_CONFIG.apiUrl('/logout')
+                    : ((window.location && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') ? 'http://127.0.0.1:5001' : window.location.origin) + '/logout');
+                await fetch(logoutUrl, {
                     method: 'POST',
                     credentials: 'include'
                 });

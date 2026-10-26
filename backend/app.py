@@ -32,25 +32,52 @@ else:
     app.config['SECRET_KEY'] = 'phoenix-development-fallback-key-32bytes-min-len'
 
 app.config['SESSION_COOKIE_HTTPONLY'] = True
-app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+app.config['SESSION_COOKIE_SAMESITE'] = os.environ.get('SESSION_COOKIE_SAMESITE', 'Lax')
 if os.environ.get('ENVIRONMENT', 'development').lower() == 'production':
     app.config['SESSION_COOKIE_SECURE'] = True
+
 
 # CORS configuration — origins loaded from env var for production flexibility
 # Set ALLOWED_ORIGINS to a comma-separated list of trusted frontend URLs.
 # Example: https://phoenix-frontend.onrender.com,https://myapp.vercel.app
-_default_dev_origins = [
-    'http://127.0.0.1:8090', 'http://localhost:8090',
-    'http://127.0.0.1:8080', 'http://localhost:8080',
-    'http://127.0.0.1:5500', 'http://localhost:5500',
-]
-_allowed_origins_env = os.environ.get('ALLOWED_ORIGINS', '')
-_allowed_origins = (
-    [o.strip() for o in _allowed_origins_env.split(',') if o.strip()]
-    if _allowed_origins_env
-    else _default_dev_origins
+def get_allowed_origins():
+    """
+    Parses and sanitizes allowed CORS origins.
+    - Preserves approved local development origins in non-production environments.
+    - Loads production frontend origins from ALLOWED_ORIGINS env var.
+    - Explicitly filters out wildcards ('*') and 'null' to prevent insecure credentialed CORS bypasses.
+    - Strips trailing slashes to ensure standard origin matching.
+    """
+    dev_origins = [
+        'http://127.0.0.1:8090', 'http://localhost:8090',
+        'http://127.0.0.1:8080', 'http://localhost:8080',
+        'http://127.0.0.1:5500', 'http://localhost:5500',
+    ]
+    raw_env = os.environ.get('ALLOWED_ORIGINS', '')
+    parsed_env = [
+        o.strip().rstrip('/')
+        for o in raw_env.split(',')
+        if o.strip() and o.strip() != '*' and o.strip().lower() != 'null'
+    ]
+
+    is_production = os.environ.get('ENVIRONMENT', 'development').lower() == 'production'
+    if is_production:
+        return parsed_env if parsed_env else dev_origins
+
+    # In development/testing, merge dev origins with any custom origins (deduplicated)
+    return list(dict.fromkeys(dev_origins + parsed_env))
+
+
+_allowed_origins = get_allowed_origins()
+CORS(
+    app,
+    supports_credentials=True,
+    origins=_allowed_origins,
+    methods=['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
+    allow_headers=['Content-Type', 'Authorization', 'X-User-Email'],
+    expose_headers=['Content-Type', 'X-RateLimit-Limit', 'X-RateLimit-Remaining', 'X-RateLimit-Reset', 'Retry-After'],
+    max_age=86400
 )
-CORS(app, supports_credentials=True, origins=_allowed_origins)
 
 # Rate limiting configuration (configurable storage backend, defaults to memory)
 ratelimit_storage_uri = os.environ.get('RATELIMIT_STORAGE_URI', 'memory://')
@@ -390,7 +417,7 @@ def login():
     def _build_user_response(user_record, role):
         """Verifies password and builds login response for a matching user record."""
         stored_hash = user_record.get('password_hash', '')
-        if stored_hash and not check_password_hash(stored_hash, password):
+        if not stored_hash or not check_password_hash(stored_hash, password):
             return None, jsonify({
                 'success': False,
                 'message': 'Invalid password.'
@@ -435,6 +462,46 @@ def login():
     }), 401
 
 
+def sanitize_employee(emp_record):
+    """
+    Strips credentials, password hashes, and sensitive internal security keys
+    from employee records while preserving legitimate profile attributes.
+    """
+    if not isinstance(emp_record, dict):
+        return {}
+    allowed_keys = {'id', 'name', 'email', 'department', 'role', 'status'}
+    sanitized = {k: v for k, v in emp_record.items() if k in allowed_keys}
+    for sensitive in ('password_hash', 'password', 'secret', 'token'):
+        sanitized.pop(sensitive, None)
+    return sanitized
+
+
+@app.route('/auth/me', methods=['GET'])
+def get_auth_session():
+    """
+    Validates the active server-side session and returns the sanitized user profile.
+    Used by frontend authentication guards to prevent unauthorized access.
+    """
+    current_user = get_current_user()
+    if not current_user:
+        return jsonify({
+            'success': False,
+            'authenticated': False,
+            'message': 'Authentication required. Please log in.'
+        }), 401
+
+    return jsonify({
+        'success': True,
+        'authenticated': True,
+        'user': {
+            'name': current_user.get('name'),
+            'email': current_user.get('email'),
+            'role': current_user.get('role'),
+            'department': current_user.get('department')
+        }
+    }), 200
+
+
 @app.route('/logout', methods=['POST'])
 def logout():
     """Clears the server-side session cookie, invalidating the user's login state."""
@@ -454,9 +521,11 @@ def get_employees():
     with open(DATA_PATH, 'r') as f:
         emp_data = json.load(f)
 
+    sanitized_employees = [sanitize_employee(e) for e in emp_data.get('employees', [])]
+
     return jsonify({
         'success': True,
-        'employees': emp_data.get('employees', [])
+        'employees': sanitized_employees
     }), 200
 
 
@@ -525,7 +594,7 @@ def add_employee():
     return jsonify({
         'success': True,
         'message': 'Employee added successfully.',
-        'employee': new_employee
+        'employee': sanitize_employee(new_employee)
     }), 200
 
 
@@ -564,7 +633,7 @@ def generate_ai_email():
             }), 403
         manager_name = current_user.get('name')
     else:
-        if not assigned_by and not app.config.get('TESTING'):
+        if not app.config.get('TESTING'):
             return jsonify({
                 'success': False,
                 'message': 'Authentication required. Please log in.'
@@ -673,7 +742,7 @@ def assign_task():
             }), 403
         manager_name = current_user.get('name')
     else:
-        if not assigned_by_input and not app.config.get('TESTING'):
+        if not app.config.get('TESTING'):
             return jsonify({
                 'success': False,
                 'message': 'Authentication required. Please log in.'
@@ -1174,7 +1243,7 @@ def get_task_by_id(task_id):
     """Returns details for a single task."""
     current_user = get_current_user()
     user_email = request.args.get('user_email', '').strip()
-    user_info = current_user or get_user_info(user_email)
+    user_info = current_user or (get_user_info(user_email) if app.config.get('TESTING') else None)
 
     if not user_info and not app.config.get('TESTING'):
         return jsonify({'success': False, 'message': 'Authentication required. Please log in.'}), 401
@@ -1226,7 +1295,7 @@ def get_task_comments(task_id):
     """Returns comments for a specific task."""
     current_user = get_current_user()
     user_email = request.args.get('user_email', '').strip()
-    user_info = current_user or get_user_info(user_email)
+    user_info = current_user or (get_user_info(user_email) if app.config.get('TESTING') else None)
 
     if not user_info and not app.config.get('TESTING'):
         return jsonify({'success': False, 'message': 'Authentication required. Please log in.'}), 401
@@ -1292,10 +1361,7 @@ def add_task_comment(task_id):
     if not comment_text:
         return jsonify({'success': False, 'message': 'Comment text cannot be empty'}), 400
 
-    user_info = current_user or get_user_info(user_email)
-    if not user_info:
-        user_name = data.get('user_name', '').strip()
-        user_info = get_user_info(user_name)
+    user_info = current_user or ((get_user_info(user_email) or get_user_info(data.get('user_name', '').strip())) if app.config.get('TESTING') else None)
 
     if not user_info and not app.config.get('TESTING'):
         return jsonify({'success': False, 'message': 'Authentication required. Please log in.'}), 401
@@ -1372,7 +1438,7 @@ def edit_task_comment(task_id, comment_id):
     if not new_comment_text:
         return jsonify({'success': False, 'message': 'Comment text cannot be empty'}), 400
 
-    user_info = current_user or get_user_info(user_email)
+    user_info = current_user or (get_user_info(user_email) if app.config.get('TESTING') else None)
     if not user_info and not app.config.get('TESTING'):
         return jsonify({'success': False, 'message': 'Authentication required. Please log in.'}), 401
     if not user_info:
@@ -1421,10 +1487,10 @@ def edit_task_comment(task_id, comment_id):
 def delete_task_comment(task_id, comment_id):
     """Allows the author to delete their own comment."""
     current_user = get_current_user()
-    data = request.get_json() or {}
+    data = request.get_json(silent=True) or {}
     user_email = data.get('user_email', '').strip() or request.args.get('user_email', '').strip()
 
-    user_info = current_user or get_user_info(user_email)
+    user_info = current_user or (get_user_info(user_email) if app.config.get('TESTING') else None)
     if not user_info and not app.config.get('TESTING'):
         return jsonify({'success': False, 'message': 'Authentication required. Please log in.'}), 401
     if not user_info:
@@ -1473,7 +1539,7 @@ def get_task_activity(task_id):
     """Returns activity records for a specific task sorted newest first."""
     current_user = get_current_user()
     user_email = request.args.get('user_email', '').strip()
-    user_info = current_user or get_user_info(user_email)
+    user_info = current_user or (get_user_info(user_email) if app.config.get('TESTING') else None)
 
     if not user_info and not app.config.get('TESTING'):
         return jsonify({'success': False, 'message': 'Authentication required. Please log in.'}), 401

@@ -6,6 +6,17 @@ const employeeGreeting = document.getElementById('employeeGreeting');
 const tasksContainer = document.getElementById('tasksContainer');
 const realDeadlinesContainer = document.getElementById('realDeadlinesContainer');
 const pastDueTasksContainer = document.getElementById('pastDueTasksContainer');
+
+// Centralized API URL resolution (falls back to PHOENIX_CONFIG)
+function getApiUrl(endpoint) {
+    if (window.PHOENIX_CONFIG && typeof window.PHOENIX_CONFIG.apiUrl === 'function') {
+        return window.PHOENIX_CONFIG.apiUrl(endpoint);
+    }
+    const clean = endpoint.startsWith('/') ? endpoint : '/' + endpoint;
+    const base = (window.API_BASE_URL || (window.location && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') ? 'http://127.0.0.1:5001' : window.location.origin));
+    return base + clean;
+}
+
 let allEmployeeTasks = [];
 
 // Department role profiles mapping to reflect real roles from data/employees.json
@@ -212,7 +223,9 @@ function initWorkspaceDate() {
     }
 }
 
-// Main task fetcher: reads real data from backend SQLite via existing endpoint for current employee
+// Main task fetcher: reads real data from backend SQLite via existing endpoint for current employee.
+// Phase 3: loadTasks and loadMeetings are now run concurrently so a failure in one
+// does not prevent the other from rendering.
 async function loadTasks(employeeName) {
     if (employeeGreeting) {
         employeeGreeting.textContent = `Personal workspace & professional profile for ${employeeName}`;
@@ -224,40 +237,68 @@ async function loadTasks(employeeName) {
         tasksContainer.innerHTML = '<div style="text-align: center; color: #798887; padding: 28px; font-size: 13.5px;">Loading assigned tasks from PHOENIX server...</div>';
     }
 
-    try {
-        const response = await fetch(`http://127.0.0.1:5001/tasks/${encodeURIComponent(employeeName)}`, { credentials: 'include' });
-        const data = await response.json();
+    // Run task fetch and meeting fetch independently — failure in one must not block the other.
+    const [taskResult, meetingResult] = await Promise.allSettled([
+        fetch(getApiUrl(`/tasks/${encodeURIComponent(employeeName)}`), { credentials: 'include' })
+            .then(async r => {
+                if (r.status === 401) {
+                    try { localStorage.removeItem('phoenix_user'); } catch (e) {}
+                    window.location.replace('index.html');
+                    return { redirected: true };
+                }
+                const data = await r.json();
+                return { ok: r.ok, data };
+            }),
+        fetch(getApiUrl(`/meetings/${encodeURIComponent(employeeName)}`), { credentials: 'include' })
+            .then(async r => {
+                const data = await r.json();
+                return { ok: r.ok, data };
+            })
+    ]);
 
-        if (response.ok && data.success) {
+    // --- Handle task result ---
+    if (taskResult.status === 'fulfilled') {
+        const { redirected, ok, data } = taskResult.value;
+        if (redirected) return; // redirect already triggered
+        if (ok && data && data.success) {
             allEmployeeTasks = data.tasks || [];
             updateFilterPillCounts(allEmployeeTasks);
             applyTaskFilterAndSearch();
             renderPastDueTasks(allEmployeeTasks);
             renderUpcomingDeadlines(allEmployeeTasks);
             updateKPICounters(allEmployeeTasks);
-
-            // Populate the standalone Comments & Updates task dropdown with ALL tasks
             populateCuTaskDropdown(allEmployeeTasks);
-
-            // Also load meetings for the employee
-            loadMeetings(employeeName);
         } else {
             if (tasksContainer) {
                 tasksContainer.innerHTML = `
                     <div style="text-align: center; color: #dc2626; padding: 18px; background: #FEF2F2; border-radius: 8px;">
-                        <p style="margin: 0; font-size: 13px;">${escapeHtml(data.message || 'Unable to load tasks.')}</p>
+                        <p style="margin: 0; font-size: 13px;">${escapeHtml((data && data.message) || 'Unable to load tasks.')}</p>
                     </div>
                 `;
             }
         }
-    } catch (error) {
+    } else {
+        // Network error on task fetch
         if (tasksContainer) {
             tasksContainer.innerHTML = `
                 <div style="text-align: center; color: #dc2626; padding: 18px; background: #FEF2F2; border-radius: 8px;">
-                    <p style="margin: 0; font-size: 13px;">Unable to reach PHOENIX server. Please ensure backend is running on port 5001.</p>
+                    <p style="margin: 0; font-size: 13px;">Unable to reach PHOENIX server. Please ensure the backend is running and reachable.</p>
                 </div>
             `;
         }
+        console.error('Task fetch network error:', taskResult.reason);
+    }
+
+    // --- Handle meeting result (independent of task result) ---
+    if (meetingResult.status === 'fulfilled') {
+        const { ok, data } = meetingResult.value;
+        if (ok && data && data.success) {
+            renderMeeting(data.meetings || []);
+        } else {
+            console.warn('Meeting fetch returned non-success:', data && data.message);
+        }
+    } else {
+        console.error('Meeting fetch network error:', meetingResult.reason);
     }
 }
 
@@ -265,7 +306,7 @@ let currentMeetingInterval = null;
 
 async function loadMeetings(employeeName) {
     try {
-        const response = await fetch(`http://127.0.0.1:5001/meetings/${encodeURIComponent(employeeName)}`, { credentials: 'include' });
+        const response = await fetch(getApiUrl(`/meetings/${encodeURIComponent(employeeName)}`), { credentials: 'include' });
         const data = await response.json();
 
         if (response.ok && data.success) {
@@ -742,7 +783,7 @@ async function submitEmployeeComment() {
     }
 
     try {
-        const resp = await fetch(`http://127.0.0.1:5001/tasks/${taskId}/comments`, {
+        const resp = await fetch(getApiUrl(`/tasks/${taskId}/comments`), {
             method: 'POST',
             credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
@@ -858,7 +899,7 @@ async function saveEmployeeProgress() {
     }
 
     try {
-        const resp = await fetch(`http://127.0.0.1:5001/tasks/${taskId}/progress`, {
+        const resp = await fetch(getApiUrl(`/tasks/${taskId}/progress`), {
             method: 'PATCH',
             credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
@@ -930,7 +971,7 @@ async function loadInlineTaskComments(taskId) {
     const user = getCurrentUser();
 
     try {
-        const resp = await fetch(`http://127.0.0.1:5001/tasks/${taskId}/comments?user_email=${encodeURIComponent(user.email)}`, { credentials: 'include' });
+        const resp = await fetch(getApiUrl(`/tasks/${taskId}/comments?user_email=${encodeURIComponent(user.email)}`), { credentials: 'include' });
         const data = await resp.json();
 
         if (resp.ok && data.success) {
@@ -988,7 +1029,7 @@ async function applyTaskStatusUpdate(taskId, newStatus) {
     } catch (e) { }
 
     try {
-        const response = await fetch(`http://127.0.0.1:5001/tasks/${taskId}/status`, {
+        const response = await fetch(getApiUrl(`/tasks/${taskId}/status`), {
             method: 'PATCH',
             credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
@@ -1544,7 +1585,7 @@ async function loadCuRecentComments(taskId) {
 
     try {
         const resp = await fetch(
-            'http://127.0.0.1:5001/tasks/' + taskId + '/comments?user_email=' + encodeURIComponent(user.email),
+            getApiUrl('/tasks/' + taskId + '/comments?user_email=' + encodeURIComponent(user.email)),
             { credentials: 'include' }
         );
         const data = await resp.json();
@@ -1623,7 +1664,7 @@ async function submitStandaloneComment() {
     }
 
     try {
-        var resp = await fetch('http://127.0.0.1:5001/tasks/' + parseInt(taskId, 10) + '/comments', {
+        var resp = await fetch(getApiUrl('/tasks/' + parseInt(taskId, 10) + '/comments'), {
             method: 'POST',
             credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
@@ -1675,21 +1716,31 @@ async function submitStandaloneComment() {
     }
 }
 
-// Initial load on page ready
-document.addEventListener('DOMContentLoaded', function () {
+// Initial load on page ready with authentication guard
+document.addEventListener('DOMContentLoaded', async function () {
     initWorkspaceDate();
     let employeeName = 'Sanjana Chavan';
-    try {
-        const stored = localStorage.getItem('phoenix_user');
-        if (stored) {
-            const user = JSON.parse(stored);
-            if (user && user.name) {
-                employeeName = user.name;
-            }
+
+    if (window.PHOENIX_CONFIG && typeof window.PHOENIX_CONFIG.checkAuth === 'function') {
+        const authUser = await window.PHOENIX_CONFIG.checkAuth(['employee', 'administrator']);
+        if (!authUser) return; // Unauthenticated or wrong role; redirected
+        if (authUser.name) {
+            employeeName = authUser.name;
         }
-    } catch (e) {
-        console.error('Error reading logged in user:', e);
+    } else {
+        try {
+            const stored = localStorage.getItem('phoenix_user');
+            if (stored) {
+                const user = JSON.parse(stored);
+                if (user && user.name) {
+                    employeeName = user.name;
+                }
+            }
+        } catch (e) {
+            console.error('Error reading logged in user:', e);
+        }
     }
+
     loadTasks(employeeName);
 
     // Wire up standalone Comments & Updates section event listeners
@@ -1751,7 +1802,7 @@ async function openTaskDetails(taskId) {
     const user = getCurrentUser();
 
     try {
-        const resp = await fetch(`http://127.0.0.1:5001/tasks/id/${taskId}?user_email=${encodeURIComponent(user.email)}`, { credentials: 'include' });
+        const resp = await fetch(getApiUrl(`/tasks/id/${taskId}?user_email=${encodeURIComponent(user.email)}`), { credentials: 'include' });
         const data = await resp.json();
 
         if (resp.ok && data.success && data.task) {
@@ -1824,7 +1875,7 @@ async function loadTaskComments(taskId) {
     const user = getCurrentUser();
 
     try {
-        const resp = await fetch(`http://127.0.0.1:5001/tasks/${taskId}/comments?user_email=${encodeURIComponent(user.email)}`, { credentials: 'include' });
+        const resp = await fetch(getApiUrl(`/tasks/${taskId}/comments?user_email=${encodeURIComponent(user.email)}`), { credentials: 'include' });
         const data = await resp.json();
 
         if (resp.ok && data.success) {
@@ -1891,7 +1942,7 @@ async function loadTaskActivity(taskId) {
     const user = getCurrentUser();
 
     try {
-        const resp = await fetch(`http://127.0.0.1:5001/tasks/${taskId}/activity?user_email=${encodeURIComponent(user.email)}`, { credentials: 'include' });
+        const resp = await fetch(getApiUrl(`/tasks/${taskId}/activity?user_email=${encodeURIComponent(user.email)}`), { credentials: 'include' });
         const data = await resp.json();
 
         if (resp.ok && data.success) {
@@ -1936,7 +1987,7 @@ async function submitComment() {
     }
 
     try {
-        const resp = await fetch(`http://127.0.0.1:5001/tasks/${currentDrawerTaskId}/comments`, {
+        const resp = await fetch(getApiUrl(`/tasks/${currentDrawerTaskId}/comments`), {
             method: 'POST',
             credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
@@ -2007,7 +2058,7 @@ async function saveEditComment(commentId) {
 
     const user = getCurrentUser();
     try {
-        const resp = await fetch(`http://127.0.0.1:5001/tasks/${currentDrawerTaskId}/comments/${commentId}`, {
+        const resp = await fetch(getApiUrl(`/tasks/${currentDrawerTaskId}/comments/${commentId}`), {
             method: 'PATCH',
             credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
@@ -2050,7 +2101,7 @@ async function confirmDeleteComment() {
     const user = getCurrentUser();
 
     try {
-        const resp = await fetch(`http://127.0.0.1:5001/tasks/${currentDrawerTaskId}/comments/${commentId}`, {
+        const resp = await fetch(getApiUrl(`/tasks/${currentDrawerTaskId}/comments/${commentId}`), {
             method: 'DELETE',
             credentials: 'include',
             headers: { 'Content-Type': 'application/json' },

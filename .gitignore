@@ -21,6 +21,8 @@ backend/__pycache__/
 # Databases and Backups
 *.db
 *.db.bak
+*.db-shm
+*.db-wal
 *.sqlite
 *.sqlite3
 backend/phoenix.db

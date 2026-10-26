@@ -2836,7 +2836,7 @@
             <span class="px-header-title">Project Manager Dashboard</span>
         </div>
 
-        <!-- Right: Role badge + Add Employee button -->
+        <!-- Right: Role badge + Add Employee button + Logout -->
         <div class="px-header-right">
             <span class="px-role-badge">
                 <span class="material-symbols-outlined" style="font-size:13px;">manage_accounts</span>
@@ -2845,6 +2845,10 @@
             <button type="button" id="openAddEmployeeBtn" class="px-btn-outline">
                 <span class="material-symbols-outlined">person_add</span>
                 Add Employee
+            </button>
+            <button type="button" id="managerLogoutBtn" onclick="logoutManager()" class="px-btn-outline" style="color: #ef4444; border-color: rgba(239,68,68,0.3);">
+                <span class="material-symbols-outlined">logout</span>
+                Logout
             </button>
         </div>
     </div>
@@ -3392,10 +3396,26 @@
     </div>
 </div>
 
+<!-- Centralized API and environment configuration -->
+<script src="js/config.js"></script>
 <!-- manager.js — all logic, IDs, and data fetching untouched -->
 <script src="js/manager.js"></script>
 
 <script>
+    async function logoutManager() {
+        try {
+            const logoutUrl = (window.PHOENIX_CONFIG && typeof window.PHOENIX_CONFIG.apiUrl === 'function')
+                ? window.PHOENIX_CONFIG.apiUrl('/logout')
+                : '/logout';
+            await fetch(logoutUrl, {
+                method: 'POST',
+                credentials: 'include'
+            });
+        } catch (e) {}
+        try { localStorage.removeItem('phoenix_user'); } catch (e) {}
+        window.location.href = 'index.html';
+    }
+
     /* ============================================================
        UI ENHANCEMENTS — micro-interactions that complement manager.js
        ============================================================ */

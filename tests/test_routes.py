@@ -29,6 +29,7 @@ class TestRoutesAvailability(BaseTestCase):
             '/tasks/<int:task_id>/activity',
             '/activity/recent',
             '/health',
+            '/auth/me',
         ]
         for endpoint in expected_endpoints:
             self.assertIn(

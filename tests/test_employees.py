@@ -77,5 +77,41 @@ class TestEmployeeManagement(BaseTestCase):
         self.assertIn('already exists', data.get('message', '').lower())
 
 
+    def test_get_employees_never_exposes_password_hash_or_credentials(self):
+        """CRITICAL SECURITY REGRESSION: GET /employees must NEVER return password_hash or credential secrets."""
+        response = self.client.get('/employees')
+        self.assertEqual(response.status_code, 200)
+        data = response.get_json()
+        employees = data.get('employees', [])
+        self.assertGreater(len(employees), 0, "Expected at least one employee in test response.")
+
+        forbidden_keys = {'password_hash', 'password', 'secret', 'token'}
+        for emp in employees:
+            for forbidden in forbidden_keys:
+                self.assertNotIn(
+                    forbidden,
+                    emp,
+                    f"SECURITY VULNERABILITY: Sensitive field '{forbidden}' found in GET /employees response for {emp.get('name')}."
+                )
+            # Verify legitimate profile fields are preserved
+            self.assertIn('name', emp)
+            self.assertIn('email', emp)
+            self.assertIn('department', emp)
+            self.assertIn('role', emp)
+            self.assertIn('status', emp)
+
+    def test_get_employees_unauthenticated_rejected_outside_testing(self):
+        """GET /employees must return HTTP 401 when unauthenticated and not in testing mode."""
+        self.app.config['TESTING'] = False
+        try:
+            response = self.client.get('/employees')
+            self.assertEqual(response.status_code, 401)
+            data = response.get_json()
+            self.assertFalse(data.get('success'))
+            self.assertIn('Authentication required', data.get('message', ''))
+        finally:
+            self.app.config['TESTING'] = True
+
+
 if __name__ == '__main__':
     unittest.main()
