@@ -50,6 +50,11 @@ document.getElementById('loginForm').addEventListener('submit', async function(e
         const data = await response.json();
 
         if (response.ok && data.success && data.user) {
+            // Save JWT token for cross-origin Bearer auth (primary auth method)
+            if (data.token && window.PHOENIX_CONFIG && window.PHOENIX_CONFIG.setToken) {
+                window.PHOENIX_CONFIG.setToken(data.token);
+            }
+
             // Save user info to localStorage
             localStorage.setItem('phoenix_user', JSON.stringify({
                 name: data.user.name,
@@ -63,6 +68,8 @@ document.getElementById('loginForm').addEventListener('submit', async function(e
                 window.location.href = 'manager.html';
             } else if (data.user.role === 'employee') {
                 window.location.href = 'employee.html';
+            } else if (data.user.role === 'administrator') {
+                window.location.href = 'manager.html';
             } else {
                 errorMessage.textContent = 'Invalid PHOENIX email address.';
                 errorMessage.classList.add('show');

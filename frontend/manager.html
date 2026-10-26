@@ -5,6 +5,13 @@
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
     <title>PHOENIX — Project Manager Dashboard</title>
     <meta name="description" content="PHOENIX Project Manager Dashboard — track team tasks, deadlines and performance in real time."/>
+    <!-- =================================================================
+         PRODUCTION: Replace the content value below with your actual
+         Render backend URL, e.g. https://phoenix-backend.onrender.com
+         This tells config.js where to send API calls when frontend and
+         backend are on different domains (cross-origin deployment).
+         ================================================================= -->
+    <meta name="phoenix-api-base" content="REPLACE_WITH_YOUR_BACKEND_URL">
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -3412,6 +3419,10 @@
                 credentials: 'include'
             });
         } catch (e) {}
+        // Clear JWT token and user info
+        if (window.PHOENIX_CONFIG && window.PHOENIX_CONFIG.removeToken) {
+            window.PHOENIX_CONFIG.removeToken();
+        }
         try { localStorage.removeItem('phoenix_user'); } catch (e) {}
         window.location.href = 'index.html';
     }

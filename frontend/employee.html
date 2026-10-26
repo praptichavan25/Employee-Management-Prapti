@@ -4,6 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PHOENIX Employee Workspace</title>
+    <!-- =================================================================
+         PRODUCTION: Replace the content value below with your actual
+         Render backend URL, e.g. https://phoenix-backend.onrender.com
+         ================================================================= -->
+    <meta name="phoenix-api-base" content="REPLACE_WITH_YOUR_BACKEND_URL">
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -403,6 +408,10 @@
                 });
             } catch (e) {
                 // Backend unreachable — proceed with local logout anyway
+            }
+            // Clear JWT token and user info
+            if (window.PHOENIX_CONFIG && window.PHOENIX_CONFIG.removeToken) {
+                window.PHOENIX_CONFIG.removeToken();
             }
             localStorage.removeItem('phoenix_user');
             window.location.href = 'index.html';

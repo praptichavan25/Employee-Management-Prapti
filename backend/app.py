@@ -2,7 +2,7 @@ import os
 import sys
 import json
 import sqlite3
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from functools import wraps
 from flask import Flask, request, jsonify, session
 from flask_cors import CORS
@@ -10,6 +10,11 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from dotenv import load_dotenv
 from werkzeug.security import check_password_hash
+try:
+    import jwt as pyjwt
+    _JWT_AVAILABLE = True
+except ImportError:
+    _JWT_AVAILABLE = False
 
 BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
 if BACKEND_DIR not in sys.path:
@@ -32,9 +37,17 @@ else:
     app.config['SECRET_KEY'] = 'phoenix-development-fallback-key-32bytes-min-len'
 
 app.config['SESSION_COOKIE_HTTPONLY'] = True
-app.config['SESSION_COOKIE_SAMESITE'] = os.environ.get('SESSION_COOKIE_SAMESITE', 'Lax')
-if os.environ.get('ENVIRONMENT', 'development').lower() == 'production':
+is_production = os.environ.get('ENVIRONMENT', 'development').lower() == 'production'
+# In production, frontend and backend are on different Render domains (cross-origin).
+# SameSite=None is required so the browser sends the session cookie with cross-origin
+# requests (e.g. /auth/me called from the frontend static site to the backend service).
+# SameSite=None mandates Secure=True, so both are set together in production.
+if is_production:
+    app.config['SESSION_COOKIE_SAMESITE'] = os.environ.get('SESSION_COOKIE_SAMESITE', 'None')
     app.config['SESSION_COOKIE_SECURE'] = True
+else:
+    app.config['SESSION_COOKIE_SAMESITE'] = os.environ.get('SESSION_COOKIE_SAMESITE', 'Lax')
+    app.config['SESSION_COOKIE_SECURE'] = False
 
 
 # CORS configuration — origins loaded from env var for production flexibility
@@ -313,18 +326,58 @@ def validate_manager(manager_identifier):
     return None
 
 
+# ---------------------------------------------------------------------------
+# JWT helpers — used instead of session cookies for cross-origin deployments
+# ---------------------------------------------------------------------------
+JWT_EXPIRY_HOURS = int(os.environ.get('JWT_EXPIRY_HOURS', '24'))
+
+
+def _get_jwt_secret():
+    """Returns the secret used to sign JWTs (reuses Flask SECRET_KEY)."""
+    return app.config.get('SECRET_KEY', 'phoenix-development-fallback-key-32bytes-min-len')
+
+
+def create_jwt(user_info: dict) -> str:
+    """Creates a signed JWT containing the user payload."""
+    payload = {
+        'user': user_info,
+        'exp': datetime.now(timezone.utc) + timedelta(hours=JWT_EXPIRY_HOURS),
+        'iat': datetime.now(timezone.utc),
+    }
+    return pyjwt.encode(payload, _get_jwt_secret(), algorithm='HS256')
+
+
+def decode_jwt(token: str):
+    """Decodes and validates a JWT. Returns the user dict or None."""
+    try:
+        payload = pyjwt.decode(token, _get_jwt_secret(), algorithms=['HS256'])
+        return payload.get('user')
+    except Exception:
+        return None
+
+
 def get_current_user():
     """
     Retrieves the currently authenticated user context.
-    Primary source: Flask session['user'].
-    Fallback (for testing or API callers with user context):
-    Checks header X-User-Email, query parameter user_email,
-    or JSON payload fields if in testing mode.
+    Priority:
+      1. JWT Bearer token in Authorization header  ← primary for cross-origin deployments
+      2. Flask session cookie                       ← fallback / local dev
+      3. X-User-Email header / query param          ← testing mode only
     """
+    # 1. JWT from Authorization: Bearer <token>
+    if _JWT_AVAILABLE:
+        auth_header = request.headers.get('Authorization', '')
+        if auth_header.startswith('Bearer '):
+            token = auth_header[7:].strip()
+            user = decode_jwt(token)
+            if user:
+                return user
+
+    # 2. Flask session cookie (works in same-origin / local dev setups)
     if 'user' in session and session['user']:
         return session['user']
 
-    # Testing or fallback user identification
+    # 3. Testing or fallback user identification
     user_email = request.headers.get('X-User-Email') or request.args.get('user_email')
     if not user_email and request.is_json:
         data = request.get_json(silent=True) or {}
@@ -428,33 +481,35 @@ def login():
             'role': role,
             'department': user_record.get('department')
         }
-        # Establish server-side session
+        # Establish server-side session (works for same-origin / local dev)
         session['user'] = user_info
-        return user_info, None, None
+        # Also issue a JWT token for cross-origin deployments (stored in localStorage)
+        token = create_jwt(user_info) if _JWT_AVAILABLE else None
+        return user_info, token, None, None
 
     # Check administrators
     for admin in emp_data.get('administrators', []):
         if admin.get('email', '').strip().lower() == email:
-            user_info, err_resp, err_code = _build_user_response(admin, 'administrator')
+            user_info, token, err_resp, err_code = _build_user_response(admin, 'administrator')
             if err_resp:
                 return err_resp, err_code
-            return jsonify({'success': True, 'user': user_info}), 200
+            return jsonify({'success': True, 'user': user_info, 'token': token}), 200
 
     # Check project managers
     for pm in emp_data.get('project_managers', []):
         if pm.get('email', '').strip().lower() == email:
-            user_info, err_resp, err_code = _build_user_response(pm, 'project_manager')
+            user_info, token, err_resp, err_code = _build_user_response(pm, 'project_manager')
             if err_resp:
                 return err_resp, err_code
-            return jsonify({'success': True, 'user': user_info}), 200
+            return jsonify({'success': True, 'user': user_info, 'token': token}), 200
 
     # Check employees
     for emp in emp_data.get('employees', []):
         if emp.get('email', '').strip().lower() == email:
-            user_info, err_resp, err_code = _build_user_response(emp, 'employee')
+            user_info, token, err_resp, err_code = _build_user_response(emp, 'employee')
             if err_resp:
                 return err_resp, err_code
-            return jsonify({'success': True, 'user': user_info}), 200
+            return jsonify({'success': True, 'user': user_info, 'token': token}), 200
 
     return jsonify({
         'success': False,
