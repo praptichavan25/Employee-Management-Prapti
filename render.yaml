@@ -48,6 +48,12 @@ services:
       - key: FLASK_DEBUG
         value: "False"
 
+      # ---------- Cross-origin session cookies (frontend & backend on different domains) ---
+      # SameSite=None is required when frontend and backend are on different Render subdomains.
+      # SameSite=None forces Secure=True automatically (already set when ENVIRONMENT=production).
+      - key: SESSION_COOKIE_SAMESITE
+        value: None
+
       # ---------- CORS — set to your frontend origin after deploying it -------
       # Example: https://phoenix-frontend.onrender.com
       - key: ALLOWED_ORIGINS
