@@ -4,7 +4,7 @@ import json
 import sqlite3
 from datetime import datetime, timedelta, timezone
 from functools import wraps
-from flask import Flask, request, jsonify, session
+from flask import Flask, request, jsonify, session, send_from_directory
 from flask_cors import CORS
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
@@ -73,6 +73,10 @@ def get_allowed_origins():
         if o.strip() and o.strip() != '*' and o.strip().lower() != 'null'
     ]
 
+    render_external_url = os.environ.get('RENDER_EXTERNAL_URL', '').strip().rstrip('/')
+    if render_external_url and render_external_url not in parsed_env:
+        parsed_env.append(render_external_url)
+
     is_production = os.environ.get('ENVIRONMENT', 'development').lower() == 'production'
     if is_production:
         return parsed_env if parsed_env else dev_origins
@@ -127,6 +131,8 @@ if STORAGE_DIR:
 else:
     DATA_PATH = os.path.join(BACKEND_DIR, 'data', 'employees.json')
     DB_PATH = os.path.join(BACKEND_DIR, 'phoenix.db')
+
+FRONTEND_DIR = os.path.abspath(os.path.join(BACKEND_DIR, '..', 'frontend'))
 
 
 @app.after_request
@@ -1724,6 +1730,24 @@ def get_recent_team_activity():
 
     except Exception as e:
         return jsonify({'success': False, 'message': f'Error fetching recent activity: {str(e)}'}), 500
+
+
+# ── Frontend Static Asset & Page Serving ─────────────────────────────────────
+@app.route('/')
+def serve_index():
+    """Serves the frontend login page at the root URL."""
+    if os.path.exists(os.path.join(FRONTEND_DIR, 'index.html')):
+        return send_from_directory(FRONTEND_DIR, 'index.html')
+    return jsonify({'status': 'healthy', 'service': 'PHOENIX Backend'}), 200
+
+
+@app.route('/<path:path>')
+def serve_static(path):
+    """Serves frontend pages and static assets (HTML, CSS, JS, images). Falls back to 404."""
+    file_path = os.path.join(FRONTEND_DIR, path)
+    if os.path.isfile(file_path):
+        return send_from_directory(FRONTEND_DIR, path)
+    return jsonify({'success': False, 'message': f'Route not found: {path}'}), 404
 
 
 if __name__ == '__main__':
