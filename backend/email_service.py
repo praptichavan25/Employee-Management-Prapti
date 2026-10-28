@@ -59,6 +59,7 @@ Project Management"""
     msg.attach(MIMEText(message_body, 'plain'))
 
     # Send the email
+    server = None
     try:
         # Connect to Gmail SMTP server
         print("Connecting to smtp.gmail.com:587...")
@@ -80,6 +81,7 @@ Project Management"""
         print("Email sent.")
         
         server.quit()
+        server = None
         
         # Success message
         print("\n✓ Email sent successfully!")
@@ -107,6 +109,13 @@ Project Management"""
     except Exception as e:
         print(f"✗ Error: {e}")
         return False
+        
+    finally:
+        if server is not None:
+            try:
+                server.quit()
+            except Exception:
+                pass
 
 
 if __name__ == '__main__':

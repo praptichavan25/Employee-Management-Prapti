@@ -32,3 +32,9 @@ backend/phoenix.db.bak
 .DS_Store
 .vscode/
 .idea/
+
+# Testing & Coverage
+.pytest_cache/
+.coverage
+htmlcov/
+*.tmp

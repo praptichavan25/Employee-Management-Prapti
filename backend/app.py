@@ -113,8 +113,20 @@ def ratelimit_handler(e):
     }), 429
 
 
-DATA_PATH = os.path.join(BACKEND_DIR, 'data', 'employees.json')
-DB_PATH = os.path.join(BACKEND_DIR, 'phoenix.db')
+# Persistent storage directory (supports Render Persistent Disks mounted at e.g. /var/data)
+STORAGE_DIR = os.environ.get('PHOENIX_DATA_DIR')
+if STORAGE_DIR:
+    os.makedirs(STORAGE_DIR, exist_ok=True)
+    DATA_PATH = os.path.join(STORAGE_DIR, 'employees.json')
+    DB_PATH = os.path.join(STORAGE_DIR, 'phoenix.db')
+    # Seed initial employees.json from repo template if not yet present on persistent disk
+    default_seed = os.path.join(BACKEND_DIR, 'data', 'employees.json')
+    if not os.path.exists(DATA_PATH) and os.path.exists(default_seed):
+        import shutil
+        shutil.copyfile(default_seed, DATA_PATH)
+else:
+    DATA_PATH = os.path.join(BACKEND_DIR, 'data', 'employees.json')
+    DB_PATH = os.path.join(BACKEND_DIR, 'phoenix.db')
 
 
 @app.after_request
@@ -348,11 +360,16 @@ def create_jwt(user_info: dict) -> str:
 
 
 def decode_jwt(token: str):
-    """Decodes and validates a JWT. Returns the user dict or None."""
+    """Decodes and validates a JWT. Returns the verified user dict or None."""
+    if not _JWT_AVAILABLE or not token or not isinstance(token, str):
+        return None
     try:
         payload = pyjwt.decode(token, _get_jwt_secret(), algorithms=['HS256'])
-        return payload.get('user')
-    except Exception:
+        user = payload.get('user')
+        if isinstance(user, dict) and user.get('email') and user.get('role'):
+            return user
+        return None
+    except (pyjwt.PyJWTError, Exception):
         return None
 
 
@@ -471,7 +488,7 @@ def login():
         """Verifies password and builds login response for a matching user record."""
         stored_hash = user_record.get('password_hash', '')
         if not stored_hash or not check_password_hash(stored_hash, password):
-            return None, jsonify({
+            return None, None, jsonify({
                 'success': False,
                 'message': 'Invalid password.'
             }), 401
@@ -643,8 +660,21 @@ def add_employee():
 
     emp_data.setdefault('employees', []).append(new_employee)
 
-    with open(DATA_PATH, 'w') as f:
-        json.dump(emp_data, f, indent=2)
+    temp_path = DATA_PATH + '.tmp'
+    try:
+        with open(temp_path, 'w', encoding='utf-8') as f:
+            json.dump(emp_data, f, indent=2)
+        os.replace(temp_path, DATA_PATH)
+    except Exception as e:
+        if os.path.exists(temp_path):
+            try:
+                os.remove(temp_path)
+            except OSError:
+                pass
+        return jsonify({
+            'success': False,
+            'message': f'Failed to save employee data: {str(e)}'
+        }), 500
 
     return jsonify({
         'success': True,

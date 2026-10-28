@@ -41,10 +41,17 @@
     }
 
     // -----------------------------------------------------------------------
+    // Default URLs
+    // -----------------------------------------------------------------------
+    var DEFAULT_PROD_API_URL = 'https://employee-management-prapti-1.onrender.com';
+    var DEFAULT_DEV_API_URL = 'http://127.0.0.1:5001';
+    var KNOWN_STATIC_HOSTS = ['.netlify.app', '.vercel.app', '.github.io', '.pages.dev', '.surge.sh'];
+
+    // -----------------------------------------------------------------------
     // API base URL resolution
     // -----------------------------------------------------------------------
     function resolveApiBaseUrl() {
-        // 1. Explicit global variable override
+        // 1. Explicit global runtime variable override
         if (typeof global !== 'undefined' && global.__PHOENIX_API_URL__) {
             return String(global.__PHOENIX_API_URL__).trim().replace(/\/+$/, '');
         }
@@ -72,15 +79,35 @@
 
         // 4. Local development detection
         if (typeof window !== 'undefined' && window.location) {
-            var host = window.location.hostname;
+            var host = (window.location.hostname || '').toLowerCase();
             if (host === 'localhost' || host === '127.0.0.1') {
-                return 'http://127.0.0.1:5001';
+                if (global && global.__PHOENIX_DEV_API_URL__) {
+                    return String(global.__PHOENIX_DEV_API_URL__).trim().replace(/\/+$/, '');
+                }
+                try {
+                    var devStored = localStorage.getItem('phoenix_dev_api_url');
+                    if (devStored && devStored.trim()) {
+                        return devStored.trim().replace(/\/+$/, '');
+                    }
+                } catch (e) {}
+                return DEFAULT_DEV_API_URL;
             }
-            // 5. Production same-origin or reverse-proxy fallback
-            return window.location.origin;
+
+            // 5. Static hosting guard:
+            // When hosted on Netlify, Vercel, GitHub Pages, etc., the frontend MUST NEVER
+            // send API requests to its own origin (which only hosts static files and returns 404).
+            var isStaticHost = KNOWN_STATIC_HOSTS.some(function (suffix) {
+                return host.endsWith(suffix);
+            });
+            if (isStaticHost) {
+                return DEFAULT_PROD_API_URL;
+            }
+
+            // 6. Reverse-proxy / same-origin deployment fallback
+            return window.location.origin.replace(/\/+$/, '');
         }
 
-        return 'http://127.0.0.1:5001';
+        return DEFAULT_PROD_API_URL;
     }
 
     var API_BASE_URL = resolveApiBaseUrl();
@@ -90,16 +117,19 @@
     // -----------------------------------------------------------------------
     var PHOENIX_CONFIG = {
         API_BASE_URL: API_BASE_URL,
+        DEFAULT_PROD_API_URL: DEFAULT_PROD_API_URL,
+        DEFAULT_DEV_API_URL: DEFAULT_DEV_API_URL,
 
         /**
          * Resolves a relative endpoint path against the configured API_BASE_URL.
+         * Guarantees clean joining without missing or duplicated slashes.
          * @param {string} endpoint - The path to append, e.g. '/login' or 'tasks/123'
          * @returns {string} - The full URL
          */
         apiUrl: function (endpoint) {
             if (!endpoint) return this.API_BASE_URL;
-            var cleanEndpoint = endpoint.startsWith('/') ? endpoint : '/' + endpoint;
-            return this.API_BASE_URL + cleanEndpoint;
+            var cleanEndpoint = '/' + String(endpoint).replace(/^\/+/, '');
+            return this.API_BASE_URL.replace(/\/+$/, '') + cleanEndpoint;
         },
 
         /**
@@ -200,7 +230,22 @@
         // Token management helpers exposed for use by login/logout flows
         setToken: setToken,
         getToken: getToken,
-        removeToken: removeToken
+        removeToken: removeToken,
+
+        /**
+         * Standardized UI error presentation helper for API and network failures.
+         * @param {Error|object|string} error - The caught error or failure response
+         * @param {string} [contextMessage] - Optional action description
+         * @returns {string} - User-friendly message safe to render
+         */
+        formatErrorMessage: function (error, contextMessage) {
+            if (!error) return contextMessage || 'An unexpected error occurred. Please try again.';
+            if (typeof error === 'string') return error;
+            if (error.message && error.message.includes('Failed to fetch')) {
+                return 'Unable to connect to the PHOENIX server. Please verify your internet connection or backend status.';
+            }
+            return error.message || contextMessage || 'An unexpected error occurred. Please try again.';
+        }
     };
 
     // Expose globally
@@ -213,23 +258,31 @@
 
     // -----------------------------------------------------------------------
     // Global fetch interceptor — auto-attaches JWT to every backend API call.
-    // This means manager.js, employee.js etc. get the token automatically
-    // without needing to be individually updated.
+    // Handles both plain object headers and standard Headers instances.
+    // This ensures manager.js, employee.js, and inline scripts send the Bearer
+    // token automatically without requiring manual header injection at each call.
     // -----------------------------------------------------------------------
     if (typeof global.fetch === 'function') {
         var _originalFetch = global.fetch.bind(global);
         global.fetch = function (resource, options) {
             var url = typeof resource === 'string' ? resource : (resource && resource.url ? resource.url : '');
             // Only inject header for requests going to our backend API
-            if (url && url.startsWith(API_BASE_URL)) {
+            if (url && (url.startsWith(API_BASE_URL) || url.startsWith('/'))) {
                 var token = getToken();
                 if (token) {
                     options = options || {};
-                    options.headers = Object.assign(
-                        {},
-                        options.headers || {},
-                        { 'Authorization': 'Bearer ' + token }
-                    );
+                    if (typeof Headers !== 'undefined' && options.headers instanceof Headers) {
+                        if (!options.headers.has('Authorization')) {
+                            options.headers.set('Authorization', 'Bearer ' + token);
+                        }
+                    } else {
+                        var existingHeaders = options.headers || {};
+                        if (!existingHeaders['Authorization'] && !existingHeaders['authorization']) {
+                            options.headers = Object.assign({}, existingHeaders, {
+                                'Authorization': 'Bearer ' + token
+                            });
+                        }
+                    }
                 }
             }
             return _originalFetch(resource, options);
