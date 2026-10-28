@@ -54,8 +54,10 @@ services:
       - key: SESSION_COOKIE_SAMESITE
         value: None
 
-      # ---------- CORS — set to your frontend origin after deploying it -------
-      # Example: https://phoenix-frontend.onrender.com
+      # ---------- CORS — REQUIRED: set to your exact frontend Render Static Site URL ----
+      # This must match the exact origin of the deployed frontend static site.
+      # Example: https://employee-management-prapti-frontend.onrender.com
+      # Without this, the browser will block all API calls from the frontend (CORS error).
       - key: ALLOWED_ORIGINS
         sync: false
 

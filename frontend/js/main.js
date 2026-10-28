@@ -79,7 +79,20 @@ document.getElementById('loginForm').addEventListener('submit', async function(e
             errorMessage.classList.add('show');
         }
     } catch (error) {
-        errorMessage.textContent = 'Unable to connect to the PHOENIX server. Please make sure the backend is running.';
+        // 'Failed to fetch' is thrown for network failures (offline, CORS preflight blocked,
+        // backend unreachable / still spinning up on Render free tier, etc.).
+        // TypeError is the standard browser type for these cases.
+        let msg = 'Unable to connect to the PHOENIX server.';
+        if (error && error.message) {
+            if (error.message.includes('Failed to fetch') || error instanceof TypeError) {
+                msg = 'Unable to reach the PHOENIX server. This may be a network error, a CORS ' +
+                      'configuration issue, or the server may be starting up (Render free tier). ' +
+                      'Please wait 30 seconds and try again.';
+            } else {
+                msg = 'Connection error: ' + error.message;
+            }
+        }
+        errorMessage.textContent = msg;
         errorMessage.classList.add('show');
     } finally {
         if (submitBtn) {

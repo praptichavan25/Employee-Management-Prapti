@@ -238,6 +238,78 @@ class TestFrontendContractsAndBusinessLogic(BaseTestCase):
         # Auth check
         self.assertIn('r.status === 401', content, "employee.js must handle 401 session expiration")
 
+    def test_production_backend_url_consistency(self):
+        """
+        Regression guard: the production backend URL in config.js DEFAULT_PROD_API_URL
+        and all three HTML meta tags must agree on the same backend host.
+
+        This test prevents the class of bug where HTML meta tags point to a stale
+        or incorrect Render backend URL while config.js has a different fallback,
+        causing 'Failed to fetch' / 'Unable to connect' errors in production.
+        """
+        import re as _re
+
+        frontend_dir = os.path.join(PROJECT_ROOT, 'frontend')
+        config_path = os.path.join(frontend_dir, 'js', 'config.js')
+
+        # --- Extract DEFAULT_PROD_API_URL from config.js ---
+        with open(config_path, 'r', encoding='utf-8') as f:
+            config_content = f.read()
+
+        prod_url_match = _re.search(
+            r"var\s+DEFAULT_PROD_API_URL\s*=\s*['\"]([^'\"]+)['\"]",
+            config_content
+        )
+        self.assertIsNotNone(
+            prod_url_match,
+            "config.js must define DEFAULT_PROD_API_URL as a string literal."
+        )
+        config_prod_url = prod_url_match.group(1).rstrip('/')
+
+        # Must be a real HTTPS URL, not a placeholder
+        self.assertTrue(
+            config_prod_url.startswith('https://'),
+            f"DEFAULT_PROD_API_URL must be an HTTPS URL, got: {config_prod_url!r}"
+        )
+        self.assertNotIn(
+            'REPLACE_WITH',
+            config_prod_url,
+            "DEFAULT_PROD_API_URL must not be a placeholder value."
+        )
+
+        # --- Check each HTML file's meta tag against config.js ---
+        html_files = ['index.html', 'manager.html', 'employee.html']
+        meta_pattern = _re.compile(
+            r'<meta\s+name=["\']phoenix-api-base["\']\s+content=["\']([^"\']+)["\']'
+        )
+
+        for html_name in html_files:
+            html_path = os.path.join(frontend_dir, html_name)
+            if not os.path.exists(html_path):
+                continue  # Skip if file genuinely absent
+
+            with open(html_path, 'r', encoding='utf-8') as f:
+                html_content = f.read()
+
+            meta_match = meta_pattern.search(html_content)
+            self.assertIsNotNone(
+                meta_match,
+                f"{html_name} must contain a <meta name='phoenix-api-base' content='...'> tag."
+            )
+            meta_url = meta_match.group(1).rstrip('/')
+
+            self.assertFalse(
+                meta_url == 'REPLACE_WITH_YOUR_BACKEND_URL' or not meta_url.startswith('https://'),
+                f"{html_name}: phoenix-api-base meta tag contains a placeholder or non-HTTPS value: {meta_url!r}"
+            )
+            self.assertEqual(
+                meta_url,
+                config_prod_url,
+                f"URL mismatch: {html_name} meta tag ({meta_url!r}) does not match "
+                f"config.js DEFAULT_PROD_API_URL ({config_prod_url!r}). "
+                f"All HTML files and config.js must reference the same backend host."
+            )
+
 
 if __name__ == '__main__':
     unittest.main()

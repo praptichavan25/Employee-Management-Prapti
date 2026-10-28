@@ -43,9 +43,11 @@
     // -----------------------------------------------------------------------
     // Default URLs
     // -----------------------------------------------------------------------
-    var DEFAULT_PROD_API_URL = 'https://employee-management-prapti-1.onrender.com';
+    var DEFAULT_PROD_API_URL = 'https://employee-management-b.onrender.com';
     var DEFAULT_DEV_API_URL = 'http://127.0.0.1:5001';
-    var KNOWN_STATIC_HOSTS = ['.netlify.app', '.vercel.app', '.github.io', '.pages.dev', '.surge.sh'];
+    // .onrender.com covers both Render Static Sites and Web Services.
+    // The meta tag is always the preferred override; this list is a safety net.
+    var KNOWN_STATIC_HOSTS = ['.netlify.app', '.vercel.app', '.github.io', '.pages.dev', '.surge.sh', '.onrender.com'];
 
     // -----------------------------------------------------------------------
     // API base URL resolution
